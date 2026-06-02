@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeroNudge - Giải pháp tài chính thông minh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/stylesheets/landing.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="landing-nav">
+    <div class="nav-logo">
+      <i data-lucide="zap" style="fill: var(--primary); color: var(--primary);"></i>
+      ZeroNudge
+    </div>
+    <div class="nav-links">
+      <a href="#offer">Dịch vụ</a>
+      <a href="#features">Tính năng</a>
+      <a href="#benefits">Lợi ích</a>
+    </div>
+    <a href="/auth" class="btn-started">Get Started</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-content">
+      <h1>Cách để bạn quản lí tài chính của mình trước những pha quá lố</h1>
+      <p>Chúng tôi mang đến cho bạn giải pháp tiết kiệm tiền mới và có sinh lời vốn nhờ hợp tác với các công ty hàng đầu.</p>
+      <a href="/auth" class="btn-started" style="padding: 16px 40px; font-size: 18px;">Bắt đầu ngay</a>
+    </div>
+    <div class="hero-image">
+      <img src="/public/images/hero.png" alt="ZeroNudge Financial Illustration">
+    </div>
+  </section>
+
+  <!-- OFFER -->
+  <section class="offer" id="offer">
+    <div class="section-header">
+      <h2>Dịch vụ vượt trội</h2>
+      <p style="color: var(--text-muted);">Giải pháp toàn diện cho tài chính cá nhân và doanh nghiệp</p>
+    </div>
+    <div class="offer-grid">
+      <div class="offer-card">
+        <div class="offer-icon"><i data-lucide="shopping-cart"></i></div>
+        <h3>Giúp bạn chi tiêu 1 cách thông minh</h3>
+        <p>Hệ thống tự động phân loại giao dịch và cảnh báo khi bạn vượt ngưỡng ngân sách, giúp tối ưu hóa dòng tiền hàng ngày.</p>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon"><i data-lucide="piggy-bank"></i></div>
+        <h3>Tiết kiệm tiền thông minh</h3>
+        <p>Tính năng Green Saving giúp bạn tích lũy từ những thay đổi nhỏ, biến thói quen tiêu dùng thành tài sản bền vững.</p>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon"><i data-lucide="trending-up"></i></div>
+        <h3>Sinh lời vốn tự động</h3>
+        <p>Kết nối trực tiếp với các dự án NetZero và quỹ đầu tư xanh, mang lại lợi nhuận ổn định và ý nghĩa cho cộng đồng.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="features-container">
+      <div class="features-text">
+        <h2>Công cụ mạnh mẽ trong tay bạn</h2>
+        <div class="feature-list">
+          <div class="feature-item active" data-img="/public/images/dashboard.png" onclick="switchFeature(this)">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard Phân Tích Chuyên Sâu</span>
+          </div>
+          <div class="feature-item" data-img="/public/images/sổ_hạch_toán.png" onclick="switchFeature(this)">
+            <i data-lucide="book-open"></i>
+            <span>Sổ Hạch Toán Thông Minh (FIFO)</span>
+          </div>
+          <div class="feature-item" data-img="/public/images/quản_lí_ngân_sách.png" onclick="switchFeature(this)">
+            <i data-lucide="pie-chart"></i>
+            <span>Quản Lý Ngân Sách Chiến Lược</span>
+          </div>
+          <div class="feature-item" data-img="/public/images/sàn_đầu_tư.png" onclick="switchFeature(this)">
+            <i data-lucide="repeat"></i>
+            <span>Sàn Đầu Tư Vi Mô ESG</span>
+          </div>
+          <div class="feature-item" data-img="/public/images/nhà_cung_ứng.png" onclick="switchFeature(this)">
+            <i data-lucide="users"></i>
+            <span>Kết Nối Nhà Cung Cấp Bền Vững</span>
+          </div>
+        </div>
+      </div>
+      <div class="features-visual">
+        <div class="feature-screenshot-wrapper">
+          <div class="feature-gradient-overlay"></div>
+          <img id="feature-screenshot" src="/public/images/dashboard.png" alt="Feature Screenshot">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENEFITS -->
+  <section class="benefits" id="benefits">
+    <div class="section-header">
+      <h2 style="color: white;">Tại sao chọn ZeroNudge?</h2>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-item">
+        <h3>Minh bạch tuyệt đối</h3>
+        <p>Mọi dòng tiền, mọi khoản đầu tư đều được ghi chép và báo cáo thời gian thực.</p>
+      </div>
+      <div class="benefit-item">
+        <h3>Tác động tích cực</h3>
+        <p>Đầu tư vào tương lai xanh, giảm phát thải carbon thông qua các dự án thực tế.</p>
+      </div>
+      <div class="benefit-item">
+        <h3>Tối ưu lợi nhuận</h3>
+        <p>Sử dụng thuật toán thông minh để tìm kiếm cơ hội sinh lời an toàn và ổn định.</p>
+      </div>
+      <div class="benefit-item">
+        <h3>Cộng đồng bền vững</h3>
+        <p>Kết nối với mạng lưới các nhà cung cấp và đối tác cùng chí hướng.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-col">
+        <div class="footer-logo">
+          <i data-lucide="zap" style="fill: var(--primary); color: var(--primary);"></i>
+          ZeroNudge
+        </div>
+        <p style="margin-top: 20px; color: #9ca3af; font-size: 14px; max-width: 300px;">Kiến tạo tương lai tài chính xanh và bền vững cho mọi người.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Sản phẩm</h4>
+          <ul>
+            <li><a href="#">Dashboard</a></li>
+            <li><a href="#">Sàn Vốn</a></li>
+            <li><a href="#">Danh bạ ESG</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Công ty</h4>
+          <ul>
+            <li><a href="#">Về chúng tôi</a></li>
+            <li><a href="#">Đối tác</a></li>
+            <li><a href="#">Liên hệ</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 60px; padding-top: 30px; border-top: 1px solid #374151; color: #9ca3af; font-size: 12px;">
+      &copy; 2026 ZeroNudge Inc. All rights reserved.
+    </div>
+  </footer>
+
+  <script src="/public/javascripts/landing.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

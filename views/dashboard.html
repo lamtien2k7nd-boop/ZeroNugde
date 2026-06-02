@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <title>ZeroNudge - Premium Financial Dashboard</title>
+  <meta name="theme-color" content="#1f2937">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/public/icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/public/stylesheets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- HTML5 QR Code scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Tesseract.js OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script async src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+  <div id="app">
+    <!-- SIDEBAR (chỉ hiển thị trên desktop, ẩn trên mobile) -->
+    <aside id="sidebar">
+      <div class="logo">
+        <div class="logo-icon"><i data-lucide="zap"></i></div>
+        <div class="logo-text">ZeroNudge</div>
+      </div>
+      <nav class="nav">
+        <div class="nav-item active" onclick="switchScreen('dashboard', this)">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="switchScreen('exchange', this)">
+          <i data-lucide="repeat"></i>
+          <span>Sàn Vốn</span>
+        </div>
+        <!-- [DISABLED] Sổ hạch toán
+        <div class="nav-item" onclick="switchScreen('ledger', this)">
+          <i data-lucide="book-open"></i>
+          <span>Sổ hạch toán</span>
+        </div>
+        -->
+        <!-- [DISABLED] Ngân sách
+        <div class="nav-item" onclick="switchScreen('budget', this)">
+          <i data-lucide="pie-chart"></i>
+          <span>Ngân sách</span>
+        </div>
+        -->
+        <!-- [DISABLED] Danh bạ
+        <div class="nav-item" onclick="switchScreen('directory', this)">
+          <i data-lucide="users"></i>
+          <span>Danh bạ</span>
+        </div>
+        -->
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main id="main">
+      <header id="header">
+        <div class="header-left">
+          <div class="logo-mobile mobile-only">
+            <div class="logo-icon"><i data-lucide="zap"></i></div>
+            <div class="logo-text">ZeroNudge</div>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="header-tools">
+            <div class="search-bar" id="search-bar">
+              <i data-lucide="search" id="search-icon"></i>
+              <input type="text" placeholder="Tìm kiếm...">
+            </div>
+            <!-- Nút AI Chatbot -->
+            <button class="tool-btn" onclick="openAIChatbot()" title="Cố vấn AI">
+              <i data-lucide="message-circle"></i>
+            </button>
+            <!-- Nút The Perfect No - Chuyển tiền vào quỹ ảo -->
+            <button class="tool-btn tpn-btn" onclick="openTPNModal()" title="The Perfect No - Tiết kiệm ngay">
+              <i data-lucide="piggy-bank"></i>
+              <!-- <span class="tpn-text">The Perfect No</span> -->
+            </button>
+            <div class="profile" onclick="toggleProfileMenu(event)">
+              <img src="https://i.pravatar.cc/150?u=user" alt="Profile" class="profile-img">
+            <div id="profile-menu" class="dropdown-menu">
+              <div class="menu-header">Tài khoản</div>
+              <div class="menu-item" onclick="openSettingsModal()">
+                <i data-lucide="settings"></i>
+                <span>Cài đặt</span>
+              </div>
+              <div class="menu-item" onclick="openTPNSettingsModal()">
+                <i data-lucide="bell"></i>
+                <span>Cài đặt cảnh báo</span>
+              </div>
+              <div class="menu-item theme-toggle" onclick="toggleTheme()">
+                <div class="theme-toggle-info">
+                  <i data-lucide="moon"></i>
+                  <span>Chế độ tối/sáng</span>
+                </div>
+                <div class="theme-switch-icon"></div>
+              </div>
+              
+              <div class="menu-item" id="install-pwa-btn" style="display: none;" onclick="installPWA()">
+                <i data-lucide="download"></i>
+                <span>Tải xuống ứng dụng</span>
+              </div>
+              <div class="divider"></div>
+              <div class="menu-item logout" onclick="logout()">
+                <i data-lucide="log-out"></i>
+                <span>Đăng xuất</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div id="workspace">
+        <!-- SCREEN: DASHBOARD (Trang chính) -->
+        <div id="screen-dashboard" class="screen active">
+          <div class="dashboard-grid">
+            <div class="dashboard-left">
+              <!-- 4 KPI cards hàng ngang -->
+              <div class="kpi-row">
+                <div class="kpi-card">
+                  <div class="kpi-header"><span>Biến động số dư</span><i data-lucide="trending-up"></i></div>
+                  <div class="kpi-value" id="balance-val">--</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-header"><span>Green Saving</span><i data-lucide="leaf"></i></div>
+                  <div class="kpi-value" id="savings-val">--</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-header"><span>Tỉ lệ chi/thu</span><i data-lucide="bar-chart-3"></i></div>
+                  <div class="kpi-value" id="ratio-val">--</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-header"><span>Chuỗi ngày</span><i data-lucide="calendar"></i></div>
+                  <div class="kpi-value" id="streak-val">0</div>
+                </div>
+              </div>
+
+              <!-- 2 input cards song song -->
+              <div class="input-row">
+                <div class="input-card income-card">
+                  <div class="card-title">Nhập thu nhập</div>
+                  <div class="input-group">
+                    <input type="text" id="income-name" placeholder="Tên thu nhập">
+                    <input type="number" id="income-amount" placeholder="Số tiền (đ)">
+                    <button class="btn-primary-sm" onclick="submitIncome()">
+                      <i data-lucide="arrow-up-circle"></i> Ghi nhận
+                    </button>
+                  </div>
+                </div>
+
+                <div class="input-card expense-card">
+                  <div class="card-title">Nhập chi tiêu</div>
+                  <div class="input-group">
+                    <input type="text" id="qi-name" placeholder="Tên giao dịch">
+                    <input type="number" id="qi-amount" placeholder="Số tiền (đ)">
+                    <div class="smart-buttons" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                      <button class="btn-icon" onclick="scanQRCode()"><i data-lucide="qr-code"></i></button>
+                      <button class="btn-icon" onclick="uploadReceipt()"><i data-lucide="camera"></i></button>
+                    </div>
+                    <div class="small-note">Chú ý: tính năng chuyển ảnh thành text đang phát triển và có thể sai sót. Hãy kiểm tra lại dữ liệu trước khi lưu.</div>
+                    <div class="tags-container" id="qi-tags"></div>
+                    <button class="btn-primary-sm" onclick="submitExpense()">
+                      <i data-lucide="plus"></i> Ghi nhận
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick navigation cards (CHỈ hiện trên mobile) -->
+              <div class="quick-nav-row mobile-only">
+                <div class="quick-nav-card" onclick="switchScreen('transactions', this)">
+                  <i data-lucide="list"></i>
+                  <span>Giao dịch</span>
+                </div>
+                <div class="quick-nav-card" onclick="switchScreen('charts', this)">
+                  <i data-lucide="chart-line"></i>
+                  <span>Biểu đồ</span>
+                </div>
+                <div class="quick-nav-card" onclick="switchScreen('goals', this)">
+                  <i data-lucide="target"></i>
+                  <span>Mục tiêu</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dashboard Right (CHỈ hiện trên desktop) -->
+            <div class="dashboard-right desktop-only">
+              <!-- Giao dịch gần đây Card -->
+              <div class="trans-card card-summary">
+                <div class="card-header">
+                  <div class="card-title">Giao dịch gần đây</div>
+                  <button class="btn-text" onclick="switchScreen('transactions', null)">Xem tất cả</button>
+                </div>
+                <div class="trans-list" id="trans-list-summary"></div>
+              </div>
+
+              <!-- Xu hướng Card -->
+              <div class="chart-card card-summary">
+                <div class="card-header">
+                  <div class="card-title">Xu hướng thu chi</div>
+                  <button class="btn-text" onclick="switchScreen('charts', null)">Chi tiết</button>
+                </div>
+                <div style="height: 180px; position: relative;">
+                  <canvas id="miniChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Mục tiêu Card -->
+              <div class="goals-card card-summary">
+                <div class="card-header">
+                  <div class="card-title">Mục tiêu tài chính</div>
+                  <button class="btn-text" onclick="switchScreen('goals', null)">Cập nhật</button>
+                </div>
+                <div class="goal-progress-block">
+                  <div class="card-title" id="goals-card-title-summary" style="font-size: 12px; margin-bottom: 8px; opacity: 0.8;">--</div>
+                  <div class="goal-info" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; font-weight: 600;">
+                    <span id="pig-progress-text-summary">0%</span>
+                    <span id="pig-target-text-summary">--</span>
+                  </div>
+                  <div class="goal-bar-bg" style="height: 8px; background: var(--bg-subtle); border-radius: 4px; overflow: hidden;">
+                    <div class="goal-bar-fill" id="pig-progress-bar-summary" style="width: 0%; height: 100%; transition: width 0.4s ease;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN: TRANSACTIONS (Giao dịch) -->
+        <div id="screen-transactions" class="screen">
+          <div class="screen-header">
+            <button class="back-btn" onclick="switchScreen('dashboard', null)"><i data-lucide="arrow-left"></i></button>
+            <h2>Giao dịch</h2>
+          </div>
+          <div class="trans-list" id="trans-list-full"></div>
+        </div>
+
+        <!-- SCREEN: CHARTS (Biểu đồ) -->
+        <div id="screen-charts" class="screen">
+          <div class="screen-header">
+            <button class="back-btn" onclick="switchScreen('dashboard', null)"><i data-lucide="arrow-left"></i></button>
+            <h2>Biểu đồ thu nhập</h2>
+          </div>
+          <div class="chart-card">
+            <div class="chart-container">
+              <canvas id="mainChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card" id="b2b-spend-card" style="display:none;">
+            <div class="chart-container">
+              <canvas id="groupSpendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN: GOALS (Mục tiêu tài chính) -->
+        <div id="screen-goals" class="screen">
+          <div class="screen-header">
+            <button class="back-btn" onclick="switchScreen('dashboard', null)"><i data-lucide="arrow-left"></i></button>
+            <h2>Mục tiêu tài chính</h2>
+          </div>
+          <div class="goals-card-full">
+            <div class="card-title" id="goals-card-title">Tiết kiệm xanh (Green Saving)</div>
+            <div class="goal-progress-block">
+              <div class="goal-info">
+                <span id="pig-progress-text">0%</span>
+                <span id="pig-target-text">--</span>
+              </div>
+              <div class="goal-bar-bg goal-bar-lg">
+                <div class="goal-bar-fill" id="pig-progress-bar" style="width: 0%"></div>
+              </div>
+              <div class="goal-meta-row">
+                <span class="goal-meta-item" id="goal-co2-hint"></span>
+                <span class="goal-meta-item" id="goal-interest-hint"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN: EXCHANGE (Rót vốn) -->
+        <div id="screen-exchange" class="screen"></div>
+
+        <!-- [DISABLED] SCREEN: LEDGER
+        <div id="screen-ledger" class="screen"></div>
+        -->
+
+        <!-- [DISABLED] SCREEN: BUDGET
+        <div id="screen-budget" class="screen"></div>
+        -->
+
+        <!-- [DISABLED] SCREEN: DIRECTORY
+        <div id="screen-directory" class="screen"></div>
+        -->
+      </div>
+    </main>
+
+    <!-- BOTTOM NAVIGATION (chỉ hiển thị trên mobile) -->
+    <nav id="bottom-nav">
+      <div class="nav-item active" onclick="switchScreen('dashboard', this)">
+        <i data-lucide="home"></i>
+        <span>Trang chủ</span>
+      </div>
+      <div class="nav-item" onclick="switchScreen('exchange', this)">
+        <i data-lucide="repeat"></i>
+        <span>Rót vốn</span>
+      </div>
+      <!-- [DISABLED] Bottom nav: Sổ sách
+      <div class="nav-item" onclick="switchScreen('ledger', this)">
+        <i data-lucide="book-open"></i>
+        <span>Sổ sách</span>
+      </div>
+      -->
+      <!-- [DISABLED] Bottom nav: Ngân sách
+      <div class="nav-item" onclick="switchScreen('budget', this)">
+        <i data-lucide="pie-chart"></i>
+        <span>Ngân sách</span>
+      </div>
+      -->
+      <!-- [DISABLED] Bottom nav: Danh bạ
+      <div class="nav-item" onclick="switchScreen('directory', this)">
+        <i data-lucide="users"></i>
+        <span>Danh bạ</span>
+      </div>
+      -->
+    </nav>
+  </div>
+
+  <div id="toast" style="display:none;"></div>
+  <div id="modal-container"></div>
+  <div id="tour-overlay" class="tour-overlay" style="display:none;"></div>
+
+  <!-- Modal cài đặt The Perfect No -->
+  <div id="tpn-settings-modal" class="modal-overlay" style="display: none;">
+    <div class="compare-modal tpn-settings-modal" style="max-width: 500px;">
+      <button class="modal-close" onclick="closeTPNSettingsModal()">× Đóng</button>
+      <div class="card-title" style="margin-bottom: 20px;">⚙️ Cài đặt The Perfect No</div>
+      
+      <!-- Mức độ can thiệp -->
+      <div class="settings-group">
+        <label class="settings-label">Mức độ can thiệp</label>
+        <div class="intervention-level">
+          <label class="radio-label">
+            <input type="radio" name="intervention-level" value="low"> 🟢 Nhẹ nhàng (chỉ gợi ý)
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="intervention-level" value="medium"> 🟡 Trung bình (cảnh báo + gợi ý)
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="intervention-level" value="high"> 🔴 Mạnh mẽ (cảnh báo + đề xuất không chi)
+          </label>
+        </div>
+      </div>
+
+      <!-- Hạn mức chi tiêu theo tháng -->
+      <div class="settings-group">
+        <label class="settings-label">Hạn mức chi tiêu tháng (₫)</label>
+        <input type="number" id="tpn-monthly-limit" class="settings-input" placeholder="Nhập hạn mức tháng...">
+        <p class="settings-hint">Ví dụ: 3,000,000 (3 triệu/tháng)</p>
+      </div>
+
+      <!-- Bật/tắt theo danh mục -->
+      <div class="settings-group">
+        <label class="settings-label">Bật/tắt cảnh báo theo danh mục</label>
+        <div id="tpn-category-toggles" class="category-toggles">
+          <!-- Các tag sẽ được render động từ JavaScript -->
+        </div>
+      </div>
+
+      <!-- Cảnh báo sớm (theo % thời gian) -->
+      <div class="settings-group">
+        <label class="settings-label">Cảnh báo sớm khi</label>
+        <select id="tpn-warning-trigger" class="settings-select">
+          <option value="50">Đã chi 50% hạn mức</option>
+          <option value="70">Đã chi 70% hạn mức</option>
+          <option value="85">Đã chi 85% hạn mức</option>
+          <option value="100">Đã chi hết hạn mức</option>
+        </select>
+      </div>
+
+      <button class="btn-primary" style="width: 100%; margin-top: 20px;" onclick="saveTPNSettings()">
+        💾 Lưu cài đặt
+      </button>
+    </div>
+  </div>
+  <script src="/public/javascripts/script.js"></script>
+</body>
+
+</html>

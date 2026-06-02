@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeroNudge - Đăng nhập / Đăng ký</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/stylesheets/landing.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="auth-body">
+
+  <div class="auth-container">
+    <!-- Visual Side -->
+    <div class="auth-visual">
+      <h2 class="auth-title" id="auth-visual-title" style="color: white;">Welcome Back!</h2>
+      <p id="auth-visual-text">We missed you. Log in to continue managing your growth.</p>
+      <div style="margin-top: 40px;">
+        <i data-lucide="zap" style="width: 120px; height: 120px; opacity: 0.2; color: white;"></i>
+      </div>
+    </div>
+
+      <!-- Form Side -->
+    <div class="auth-form-side">
+      <!-- LOGIN FORM -->
+      <div id="login-form">
+        <h2 class="auth-title">Đăng nhập</h2>
+        <p class="auth-subtitle">Nhập thông tin để truy cập tài khoản của bạn</p>
+        
+        <form id="login-form-el">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Nhập username của bạn..." required>
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu</label>
+            <input type="password" name="password" placeholder="••••••••" required>
+          </div>
+          <div id="login-error" class="error-msg" style="color: #ff4d4d; margin-bottom: 15px; font-size: 0.9rem; display: none;"></div>
+          <button type="submit" class="btn-auth">Đăng nhập</button>
+        </form>
+
+        <div class="auth-switch">
+          Chưa có tài khoản? <span id="switch-to-signup">Đăng ký ngay</span>
+        </div>
+      </div>
+
+      <!-- SIGNUP FORM (Hidden by default) -->
+      <div id="signup-form" class="hidden-form">
+        <h2 class="auth-title">Đăng ký</h2>
+        <p class="auth-subtitle">Bắt đầu hành trình tài chính xanh cùng ZeroNudge</p>
+        
+        <form id="signup-form-el">
+          <div class="form-group">
+            <label>Họ tên</label>
+            <input type="text" name="fullName" placeholder="Nguyễn Văn A" required>
+          </div>
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="username123" required>
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu</label>
+            <input type="password" name="password" id="signup-password" placeholder="••••••••" required>
+          </div>
+          <div class="form-group">
+            <label>Nhập lại mật khẩu</label>
+            <input type="password" name="confirmPassword" id="signup-confirm" placeholder="••••••••" required>
+          </div>
+          <div id="signup-error" class="error-msg" style="color: #ff4d4d; margin-bottom: 15px; font-size: 0.9rem; display: none;"></div>
+          <button type="submit" class="btn-auth">Đăng ký tài khoản</button>
+        </form>
+
+        <div class="auth-switch">
+          Đã có tài khoản? <span id="switch-to-login">Đăng nhập</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/public/javascripts/landing.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

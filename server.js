@@ -1,5 +1,8 @@
 require('dotenv').config();
 const path = require('path');
+const os = require('os');
+const http = require('http');
+const util = require('util');
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
@@ -218,49 +221,141 @@ app.get('/dashboard', requireAuth, (req, res) => {
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
+  logger.info('/health called');
   try {
     const { query } = require('./db/mysql-connection');
+    logger.info('Running DB test query for health check');
     // Check database connection
-    await query('SELECT 1');
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development'
-    });
+    const result = await query('SELECT 1');
+    logger.info(`/health DB result: ${JSON.stringify(result)}`);
+    try {
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+      logger.info('/health response sent successfully');
+    } catch (sendErr) {
+      logger.error('Error sending /health response:', sendErr);
+      // Attempt a safe fallback to avoid empty responses
+      try {
+        res.setHeader('Content-Type', 'text/plain');
+        res.status(200).end('healthy');
+      } catch (endErr) {
+        logger.error('Fallback /health send failed:', endErr);
+      }
+    }
   } catch (err) {
-    logger.error('Health check failed:', err);
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: 'Database connection failed'
-    });
+    logger.error('Health check failed:', err && err.stack ? err.stack : err);
+    try {
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: 'Database connection failed'
+      });
+    } catch (sendErr) {
+      logger.error('Error sending /health error response:', sendErr);
+      try {
+        res.setHeader('Content-Type', 'text/plain');
+        res.status(503).end('unhealthy');
+      } catch (endErr) {
+        logger.error('Fallback /health error send failed:', endErr);
+      }
+    }
   }
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-  logger.error('Global error handler:', err);
-  res.status(500).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
-  });
+  logger.error('Global error handler:', err && err.stack ? err.stack : err);
+  try {
+    res.status(500).json({
+      error: process.env.NODE_ENV === 'production' ? 'Internal server error' : (err && err.message) || 'Unknown error'
+    });
+  } catch (sendErr) {
+    logger.error('Error sending response from global error handler:', sendErr);
+    try {
+      res.setHeader('Content-Type', 'text/plain');
+      res.status(500).end('Internal server error');
+    } catch (endErr) {
+      logger.error('Fallback send from global error handler failed:', endErr);
+    }
+  }
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  logger.error('Uncaught Exception:', err);
-  // Graceful shutdown
-  process.exit(1);
+  try {
+    logger.error('Uncaught Exception (stack or inspect):', err && err.stack ? err.stack : util.inspect(err, { depth: 5 }));
+    if (err && typeof err === 'object') {
+      try {
+        logger.error('Uncaught Exception properties: ' + util.inspect(Object.getOwnPropertyNames(err), { depth: 2 }));
+      } catch (propErr) {
+        logger.error('Failed to inspect error properties:', propErr);
+      }
+    }
+  } catch (logErr) {
+    console.error('Failed to log uncaughtException:', logErr);
+  }
+  // Keep process alive for debugging; do not exit immediately so we can gather logs
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Graceful shutdown
-  process.exit(1);
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason && (reason.stack || reason));
+  // Keep process alive for debugging; do not exit immediately so we can gather logs
 });
 
-app.listen(PORT, () => {
+// Create an HTTP server so we can inspect socket events
+const server = http.createServer(app);
+
+server.on('connection', (socket) => {
+  const addr = socket.remoteAddress + ':' + socket.remotePort;
+  logger.info(`New TCP connection from ${addr}`);
+  socket.on('error', (err) => {
+    logger.error(`Socket error from ${addr}:`, err && err.stack ? err.stack : err);
+  });
+  socket.on('close', (hadError) => {
+    logger.info(`Socket closed ${addr}, hadError=${hadError}`);
+  });
+  socket.on('end', () => {
+    logger.info(`Socket end ${addr}`);
+  });
+});
+
+server.on('clientError', (err, socket) => {
+  logger.error('HTTP clientError:', err && err.stack ? err.stack : err);
+  try {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  } catch (e) {
+    logger.error('Failed to send clientError response:', e);
+  }
+});
+
+server.on('error', (err) => {
+  try {
+    logger.error('Server error event:', err && err.stack ? err.stack : util.inspect(err, { depth: 5 }));
+    logger.error(`Error code=${err.code}, errno=${err.errno}, syscall=${err.syscall}, address=${err.address}, port=${err.port}`);
+  } catch (e) {
+    console.error('Failed to log server error event:', e);
+  }
+  // If the port is in use or permission denied, exit to allow orchestration to restart or user to free the port
+  if (err && (err.code === 'EADDRINUSE' || err.code === 'EACCES')) {
+    logger.error('Port in use or permission denied — please free the port or run with elevated permissions');
+    process.exit(1);
+  }
+});
+
+server.listen(PORT, '::', () => {
+  const addr = server.address();
+  logger.info(`PID ${process.pid} listening on ${addr.address}:${addr.port}`);
   logger.info(`Server at http://localhost:${PORT}`);
   logger.info(`API bundle: http://localhost:${PORT}/api/app`);
+  try {
+    const nets = os.networkInterfaces();
+    logger.info(`Network interfaces: ${JSON.stringify(nets)}`);
+  } catch (e) {
+    logger.error('Failed to read network interfaces:', e);
+  }
 });

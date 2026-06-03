@@ -161,7 +161,13 @@
                 <div class="input-card expense-card">
                   <div class="card-title">Nhập chi tiêu</div>
                   <div class="input-group">
-                    <input type="text" id="qi-name" placeholder="Tên giao dịch">
+                    <!-- Trong phần input-card, thêm nút mic -->
+                    <div class="input-field" style="position: relative;">
+                        <input type="text" id="qi-name" placeholder="Tên giao dịch">
+                        <button class="btn-mic" data-target="qi-name" onclick="toggleVoiceInput('qi-name')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; cursor: pointer;">
+                            <i data-lucide="mic"></i>
+                        </button>
+                    </div>
                     <input type="number" id="qi-amount" placeholder="Số tiền (đ)">
                     <div class="smart-buttons" style="display: flex; gap: 8px; margin-bottom: 12px;">
                       <button class="btn-icon" onclick="scanQRCode()"><i data-lucide="qr-code"></i></button>
@@ -392,6 +398,7 @@
       </button>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="/public/javascripts/script.js"></script>
 </body>
 

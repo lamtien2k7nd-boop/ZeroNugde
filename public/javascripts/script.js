@@ -52,22 +52,261 @@ async function initAIIntegration() {
   attachAIExpenseListeners();
 }
 
-function attachAIExpenseListeners() {
-  const nameInput = document.getElementById('qi-name');
-  const amtInput = document.getElementById('qi-amount');
 
-  if (nameInput) {
-    nameInput.addEventListener('blur', () => {
-      clearTimeout(aiAutoClassifyTimer);
-      aiAutoClassifyTimer = setTimeout(autoClassifyExpense, 500);
-    });
+function attachAIExpenseListeners() {
+  const descInput = document.getElementById('expense-description'); // Hoặc id ô input của bạn
+  const amountInput = document.getElementById('expense-amount');
+
+  if (!descInput) return;
+
+  descInput.addEventListener('input', () => {
+    // Xóa timer cũ nếu người dùng vẫn đang gõ
+    clearTimeout(aiAutoClassifyTimer);
+
+    // Chờ người dùng dừng gõ 800ms rồi mới gọi AI
+    aiAutoClassifyTimer = setTimeout(async () => {
+      const description = descInput.value.trim();
+      const amount = amountInput ? parseFloat(amountInput.value) || 0 : 0;
+
+      if (description.length < 2) return; // Chuỗi ngắn quá thì bỏ qua
+
+      try {
+        console.log('🔮 Đang tự động phân loại bằng AI...');
+        const response = await axios.post('/api/ai/classify', { description, amount });
+        
+        if (response.data && response.data.category) {
+          console.log('🟢 AI đề xuất danh mục:', response.data.category);
+          
+          // KÍCH HOẠT ĐOẠN LOGIC CHỌN TAG TỰ ĐỘNG Ở ĐÂY
+          selectTagByName(response.data.category);
+        }
+      } catch (err) {
+        console.error('🔴 Không thể tự động phân loại:', err);
+      }
+    }, 800);
+  });
+}
+
+let recognition = null;
+let isRecordingContinuous = false;
+let finalTranscript = '';
+let interimTranscript = '';
+let recordingTargetInputId = null;
+
+function initContinuousRecognition() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('Trình duyệt không hỗ trợ nhập liệu bằng giọng nói', 'error');
+    return null;
   }
 
-  if (amtInput) {
-    amtInput.addEventListener('blur', () => {
-      clearTimeout(aiAutoClassifyTimer);
-      aiAutoClassifyTimer = setTimeout(autoClassifyExpense, 500);
-    });
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recog = new SpeechRecognition();
+  recog.lang = 'vi-VN';
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.maxAlternatives = 1;
+  return recog;
+}
+
+function startContinuousVoiceInput(targetInputId = 'qi-name') {
+  if (recognition) {
+    stopContinuousVoiceInput();
+  }
+
+  recognition = initContinuousRecognition();
+  if (!recognition) return;
+
+  const targetInput = document.getElementById(targetInputId);
+  const micBtn = document.querySelector(`.btn-mic[data-target="${targetInputId}"]`) || document.querySelector('.btn-mic');
+  if (!targetInput || !micBtn) return;
+
+  finalTranscript = '';
+  interimTranscript = '';
+  recordingTargetInputId = targetInputId;
+
+  micBtn.classList.add('recording');
+  micBtn.innerHTML = '<i data-lucide="square"></i>';
+  refreshIcons();
+
+  targetInput.style.border = '2px solid #ef4444';
+  targetInput.placeholder = '🎤 Đang nghe... nói gì đi... Ấn vào mic để dừng';
+
+  recognition.onresult = (event) => {
+    interimTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+
+    if (interimTranscript) {
+      targetInput.value = (finalTranscript + interimTranscript).trim();
+      targetInput.style.color = 'var(--text-dim)';
+    }
+
+    if (finalTranscript) {
+      targetInput.value = finalTranscript.trim();
+      targetInput.style.color = 'var(--text)';
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.log('Speech recognition error:', event.error);
+    if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      showToast('Lỗi nhận diện: ' + event.error, 'error');
+    }
+    stopContinuousVoiceInput();
+  };
+
+  recognition.onend = () => {
+    if (isRecordingContinuous) {
+      setTimeout(() => {
+        if (!isRecordingContinuous) return;
+        recognition = initContinuousRecognition();
+        if (!recognition) return;
+
+        recognition.onresult = (event) => {
+          interimTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + ' ';
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          if (interimTranscript) {
+            targetInput.value = (finalTranscript + interimTranscript).trim();
+            targetInput.style.color = 'var(--text-dim)';
+          }
+
+          if (finalTranscript) {
+            targetInput.value = finalTranscript.trim();
+            targetInput.style.color = 'var(--text)';
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.log('Speech recognition error:', event.error);
+          if (event.error !== 'aborted' && event.error !== 'no-speech') {
+            showToast('Lỗi nhận diện: ' + event.error, 'error');
+          }
+          stopContinuousVoiceInput();
+        };
+
+        recognition.onend = () => {
+          if (isRecordingContinuous) {
+            stopContinuousVoiceInput();
+          }
+        };
+
+        recognition.start();
+      }, 300);
+    } else {
+      const activeMicBtn = document.querySelector('.btn-mic.recording');
+      if (activeMicBtn) {
+        activeMicBtn.classList.remove('recording');
+        activeMicBtn.innerHTML = '<i data-lucide="mic"></i>';
+        refreshIcons();
+      }
+      if (targetInput) {
+        targetInput.style.border = '';
+        targetInput.placeholder = targetInputId === 'qi-name' ? 'Tên giao dịch' : 'Nhập câu hỏi...';
+      }
+      if (targetInputId === 'qi-name' && finalTranscript) {
+        setTimeout(autoClassifyExpense, 500);
+      }
+    }
+  };
+
+  isRecordingContinuous = true;
+  recognition.start();
+  showToast('🎤 Đang ghi âm... Ấn vào mic lần nữa để dừng', 'info', 3000);
+}
+
+function stopContinuousVoiceInput() {
+  if (recognition) {
+    isRecordingContinuous = false;
+    recognition.stop();
+    recognition = null;
+  }
+
+  const micBtn = document.querySelector('.btn-mic.recording');
+  if (micBtn) {
+    micBtn.classList.remove('recording');
+    micBtn.innerHTML = '<i data-lucide="mic"></i>';
+    refreshIcons();
+  }
+
+  if (recordingTargetInputId) {
+    const targetInput = document.getElementById(recordingTargetInputId);
+    if (targetInput) {
+      targetInput.style.border = '';
+      targetInput.placeholder = recordingTargetInputId === 'qi-name' ? 'Tên giao dịch' : 'Nhập câu hỏi...';
+    }
+    recordingTargetInputId = null;
+  }
+}
+
+function toggleVoiceInput(targetInputId = 'qi-name') {
+  const micBtn = document.querySelector(`.btn-mic[data-target="${targetInputId}"]`) || document.querySelector('.btn-mic');
+  if (micBtn && micBtn.classList.contains('recording')) {
+    stopContinuousVoiceInput();
+  } else {
+    startContinuousVoiceInput(targetInputId);
+  }
+}
+
+function extractAmountFromVoice(text) {
+  const patterns = [
+    /(\d{1,3}(?:[.,]\d{3})*)\s*(?:đồng|ngàn|nghìn|triệu|tr)/i,
+    /(\d+)\s*(?:k|ngàn|nghìn)/i,
+    /(\d+)\s*(?:tr|triệu)/i,
+    /(mười|hai|ba|bốn|năm|sáu|bảy|tám|chín|mươi)\s*(?:nghìn|ngàn|triệu)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      let amount = match[1];
+      const numberMap = {
+        'mười': 10,
+        'hai': 2,
+        'ba': 3,
+        'bốn': 4,
+        'năm': 5,
+        'sáu': 6,
+        'bảy': 7,
+        'tám': 8,
+        'chín': 9
+      };
+
+      if (numberMap[amount]) {
+        amount = numberMap[amount];
+      }
+
+      let numAmount = parseInt(amount.toString().replace(/\./g, '').replace(/,/g, ''), 10);
+      if (isNaN(numAmount)) continue;
+
+      if (/\b(triệu|tr)\b/i.test(text)) {
+        numAmount *= 1000000;
+      } else if (/\b(ngàn|nghìn|k)\b/i.test(text)) {
+        numAmount *= 1000;
+      }
+
+      if (!isNaN(numAmount) && numAmount > 0) {
+        const amountInput = document.getElementById('qi-amount');
+        if (amountInput) {
+          amountInput.value = numAmount;
+          showToast(`💰 Đã nhận diện số tiền: ${numAmount.toLocaleString()}₫`, 'info');
+        }
+        break;
+      }
+    }
   }
 }
 
@@ -82,6 +321,9 @@ function openAIChatbot() {
         <div id="chat-messages" style="flex: 1; overflow-y: auto; margin-bottom: 16px; padding-right: 8px;"></div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <input id="chat-input" type="text" placeholder="Nhập câu hỏi của bạn..." style="flex: 1; padding: 12px 14px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--bg-subtle); color: var(--text);">
+          <button class="btn-mic btn-mic-chat" data-target="chat-input" onclick="toggleVoiceInput('chat-input')" title="Nhập bằng giọng nói" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg-subtle); border: none; cursor: pointer;">
+            <i data-lucide="mic"></i>
+          </button>
           <button class="btn-primary" onclick="sendChatMessage()" style="border-radius: 999px; padding: 12px 18px; min-width: 96px;">Gửi</button>
         </div>
       </div>
@@ -148,42 +390,178 @@ async function sendChatMessage() {
   }
 }
 
+// Thêm vào script.js, gọi sau khi người dùng nhập mô tả
 async function autoClassifyExpense() {
   const nameInput = document.getElementById('qi-name');
-  const amtInput = document.getElementById('qi-amount');
-  if (!nameInput || !amtInput) return;
-
+  const amountInput = document.getElementById('qi-amount');
+  
+  if (!nameInput) return;
+  
   const description = nameInput.value.trim();
-  const amount = parseFloat(amtInput.value) || 0;
-  if (!description || description.length < 3 || amount <= 0) return;
+  const amount = amountInput ? parseFloat(amountInput.value) || 0 : 0;
+  
+  // Tránh gọi API vô ích khi chuỗi quá ngắn
+  if (description.length < 2) return;
+
+  console.log('🔵 autoClassifyExpense called with:', { description, amount });
 
   try {
-    const res = await fetch('/api/ai/classify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description, amount })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      console.warn('Auto classify failed', data);
-      return;
-    }
+    console.log('🟡 Sending classify request...');
+    const response = await axios.post('/api/ai/classify', { description, amount });
+    
+    if (response.data && response.data.category) {
+      const aiCategory = response.data.category;
+      console.log('🟢 Classify response:', response.data);
+      console.log(`🔍 Looking for tag with label: ${aiCategory}`);
 
-    if (data.category) {
-      const matchedTag = tags.find(t => t.label === data.category);
+      // 1. Chuẩn hóa chuỗi từ AI (Ví dụ: "Ăn uống" -> "ăn uống")
+      const cleanAiCategory = aiCategory
+        .toLowerCase()
+        .replace(/#/g, '')
+        .replace(/_/g, ' ')
+        .trim();
+
+      // 2. Tìm kiếm thông minh trong mảng tags bằng cách chuẩn hóa các tag hệ thống
+      const matchedTag = tags.find(tag => {
+        // Lấy chuỗi text của tag (phòng trường hợp tag là Object {id, label} hoặc chuỗi thuần)
+        const tagText = (typeof tag === 'object' ? (tag.label || tag.name) : tag) || '';
+        
+        const cleanTagText = tagText
+          .toLowerCase()
+          .replace(/#/g, '')  // Biến "#Ăn_uống" -> "ăn_uống"
+          .replace(/_/g, ' ') // Biến "ăn_uống" -> "ăn uống"
+          .trim();
+
+        return cleanTagText === cleanAiCategory;
+      });
+
       if (matchedTag) {
-        selectedTag = matchedTag.id;
-        renderTags();
-        showToast(`🔍 Đã phân loại: ${data.category}`, 'info');
+        console.log('✅ Found matching tag:', matchedTag);
+        
+        // 3. Đồng bộ hóa việc gán tag. 
+        // LƯU Ý: Nếu hàm chọn tag bằng tay của bạn lưu Object thì gán `matchedTag`, nếu lưu ID thì gán `matchedTag.id`
+        selectedTag = matchedTag; 
+
+        // 4. Gọi hàm render lại giao diện để cập nhật class '.active' / '.selected'
+        if (typeof renderTags === 'function') {
+          renderTags();
+        } else if (typeof renderQuickExpenseForm === 'function') {
+          renderQuickExpenseForm(); 
+        }
+
+        if (typeof showToast === 'function') {
+          const displayLabel = typeof matchedTag === 'object' ? (matchedTag.label || matchedTag.name) : matchedTag;
+          showToast(`🔍 AI tự động chọn tag: ${displayLabel}`, 'info');
+        }
+      } else {
+        console.warn(`⚠️ No matching tag found for category: ${aiCategory}`);
+        console.log('Available tags:', tags);
       }
-      if (data.suggestion) {
-        showToast(`💡 ${data.suggestion}`, 'info');
+    }
+  } catch (error) {
+    console.error('🔴 Error in autoClassifyExpense:', error);
+  }
+}
+
+// Gắn sự kiện cho input mô tả
+document.getElementById('qi-name')?.addEventListener('blur', autoClassifyExpense);
+document.getElementById('qi-amount')?.addEventListener('blur', autoClassifyExpense);
+
+function selectTagByName(categoryName) {
+  // 1. Tìm tag tương ứng trong mảng dữ liệu tags của hệ thống
+  // Giả sử cấu trúc tag của bạn có thuộc tính .name (Ví dụ: t.name = "Ăn uống")
+  const matchedTag = tags.find(t => t.name.toLowerCase() === categoryName.toLowerCase());
+
+  if (!matchedTag) {
+    console.log(`🟡 Không tìm thấy tag nào khớp với tên "${categoryName}" trong hệ thống.`);
+    return;
+  }
+
+  // 2. Cập nhật biến trạng thái tag được chọn trong JS
+  selectedTag = matchedTag; 
+  console.log('✅ Đã cập nhật selectedTag thành:', selectedTag);
+
+  // 3. Cập nhật giao diện (Highlight Tag)
+  // Tìm tất cả các element hiển thị tag trên màn hình
+  const tagElements = document.querySelectorAll('.tag-item, .category-tag'); // Thay đổi class cho đúng với HTML của bạn
+  
+  tagElements.forEach(el => {
+    // Giả sử mỗi element lưu ID của tag trong thuộc tính dataset (data-id)
+    const tagId = el.getAttribute('data-id'); 
+    
+    if (tagId == matchedTag.id) {
+      el.classList.add('active'); // Thêm class CSS để highlight (Ví dụ: đổi màu nền, thêm viền)
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); // Tự cuộn đến tag đó nếu danh sách dài
+    } else {
+      el.classList.remove('active'); // Bỏ highlight các tag khác
+    }
+  });
+}
+
+// Hàm render danh sách tag ra HTML
+function renderTags() {
+  const container = document.getElementById('tags-container');
+  if (!container) return;
+
+  container.innerHTML = tags.map(tag => {
+    // Kiểm tra xem tag này có đang được chọn hay không (hỗ trợ cả khi đối chiếu object hoặc so sánh ID)
+    const isSelected = selectedTag && (
+      (typeof selectedTag === 'object' && selectedTag.id == tag.id) || 
+      (typeof selectedTag !== 'object' && selectedTag == tag.id)
+    );
+    
+    // Nếu được chọn thì thêm class 'active', không thì bỏ trống
+    const activeClass = isSelected ? 'active' : '';
+
+    return `
+      <div class="tag-item ${activeClass}" data-id="${tag.id}">
+        ${tag.label || tag.name || tag}
+      </div>
+    `;
+  }).join('');
+
+  // Gắn lại sự kiện click thủ công cho từng tag
+  container.querySelectorAll('.tag-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const tagId = el.getAttribute('data-id');
+      selectedTag = tags.find(t => t.id == tagId);
+      
+      // Toggle class active bằng tay ngay lập tức trên UI
+      container.querySelectorAll('.tag-item').forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+    });
+  });
+}
+
+// Kiểm tra cảnh báo chi tiêu mỗi khi load dashboard
+async function checkBudgetAlerts() {
+  try {
+    const res = await fetch('/api/ai/check-alert');
+    const data = await res.json();
+    
+    if (data.hasAlert) {
+      // Hiển thị cảnh báo
+      data.alerts.forEach(alert => {
+        showToast(alert, 'warning');
+      });
+      
+      // Log vào notifications
+      logAction('budget_alert');
+      
+      // Nếu có AI analysis, hiển thị thêm
+      if (data.aiAnalysis) {
+        setTimeout(() => {
+          showToast(`💡 ${data.aiAnalysis.substring(0, 100)}...`, 'info');
+        }, 3000);
       }
     }
   } catch (err) {
-    console.error('Auto classify error:', err);
+    console.error('Check alerts error:', err);
   }
 }
+
+// Gọi sau khi renderDashboard
+setInterval(checkBudgetAlerts, 60000); // Mỗi phút kiểm tra 1 lần
 
 // Biến lưu cài đặt TPN
 let tpnSettings = {
@@ -554,35 +932,33 @@ async function initApp() {
     console.log('App initialization complete', {
       user: currentUser?.username,
       budgetItemsCount: budgetItems.length,
-      eventsCount: events.length
+      eventsCount: events.length,
+      tagsCount: tags.length
     });
 
     if (budgetItems.length > 0) {
       console.log('Budget items loaded:', budgetItems.map(i => ({ key: i.key, name: i.name, pct: i.pct })));
     }
+    
+    // Log tags để debug AI classification
+    console.log('Available tags for AI classification:', tags.map(t => ({ id: t.id, label: t.label })));
 
+    // Load TPN settings
     await loadTPNSettings();
-
 
     initTheme();
     renderDashboard();
     refreshIcons();
     checkOnboarding();
+    
+    // Gắn sự kiện AI phân loại sau khi render xong
+    attachAIExpenseListeners();
+    
   } catch (err) {
     console.error('Failed to initialize app:', err);
     showToast('Lỗi tải dữ liệu');
   }
 }
-
-async function logout() {
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/';
-  } catch (err) {
-    showToast('Đăng xuất thất bại');
-  }
-}
-
 // ──────────────────────────────────────────────────────
 // ONBOARDING & TOUR
 // ──────────────────────────────────────────────────────
@@ -1344,7 +1720,7 @@ function changeTransactionsPage(newPage) {
 function renderTags() {
   const container = document.getElementById('qi-tags');
   if (!container) return;
-
+  
   container.innerHTML = tags.map(tag => `
     <div class="tag-chip ${selectedTag === tag.id ? 'active' : ''}" 
          onclick="selectTag('${tag.id}')"

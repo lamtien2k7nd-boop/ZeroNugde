@@ -3246,3 +3246,43 @@ svg.lucide {
 .theme-toggle:hover {
   background: var(--primary-dim);
 }
+/* Tìm và sửa lại đoạn này ở cuối file style.css */
+.btn-mic {
+    background: var(--bg-subtle);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    max-width: 36px;   /* Khóa cứng chiều rộng */
+    max-height: 36px;  /* Khóa cứng chiều cao */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0 !important; /* Đảm bảo không bị padding làm phình nút */
+    border: none !important; /* Đảm bảo border không làm tăng kích thước */
+    cursor: pointer;
+    flex-shrink: 0; /* Không cho phép nút bị bóp méo khi input cha thu hẹp */
+    box-sizing: border-box; /* Tính toán kích thước chuẩn bao gồm cả border nếu có */
+}
+
+.btn-mic:hover {
+    background: var(--primary-dim);
+    color: var(--primary);
+}
+
+.btn-mic.recording {
+    background: #ef4444 !important;
+    color: white !important;
+    box-sizing: border-box;
+    padding: 0 !important;
+    border: none !important;
+    /* Nếu có hiệu ứng animation nhấp nháy, đảm bảo nó không đổi margin/padding */
+    animation: mic-pulse 1.5s infinite; 
+}
+
+/* Thêm keyframe mượt mà nếu bạn muốn nút recording nhấp nháy (tùy chọn) */
+@keyframes mic-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}

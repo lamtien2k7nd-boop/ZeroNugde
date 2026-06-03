@@ -16,6 +16,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@huggingface/inference": "^4.13.18",
     "axios": "^1.16.1",
     "bcrypt": "^6.0.0",
     "chart.js": "^4.5.1",
@@ -27,6 +28,7 @@
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.19.0",
     "form-data": "^4.0.5",
+    "groq-sdk": "^1.2.1",
     "html5-qrcode": "^2.3.8",
     "mongoose": "^9.6.2",
     "multer": "^2.1.1",

@@ -6,6 +6,5 @@ data/
 .DS_Store
 uploads/
 *.tmp
-db/
 .windsurf/
 tmp/

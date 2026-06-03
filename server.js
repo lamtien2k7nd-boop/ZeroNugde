@@ -22,12 +22,24 @@ const logger = {
 };
 
 // Environment variable validation
-const requiredEnvVars = ['SESSION_SECRET', 'MYSQL_HOST', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE'];
-const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
+const requiredEnvVarsWithAliases = {
+  SESSION_SECRET: ['SESSION_SECRET'],
+  MYSQL_HOST: ['MYSQL_HOST', 'MYSQLHOST'],
+  MYSQL_USER: ['MYSQL_USER', 'MYSQLUSER'],
+  MYSQL_PASSWORD: ['MYSQL_PASSWORD', 'MYSQLPASSWORD'],
+  MYSQL_DATABASE: ['MYSQL_DATABASE', 'MYSQLDATABASE']
+};
+const missingEnvVars = Object.entries(requiredEnvVarsWithAliases)
+  .filter(([, names]) => !names.some(name => !!process.env[name]))
+  .map(([key]) => key);
 if (missingEnvVars.length > 0) {
-  logger.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
-  logger.error('Please set these in your .env file');
-  process.exit(1);
+  if (missingEnvVars.length === 1 && missingEnvVars[0] === 'SESSION_SECRET' && process.env.NODE_ENV !== 'production') {
+    logger.warn('⚠️ SESSION_SECRET is not set. Using the built-in default secret for development only. Do not use this in production.');
+  } else {
+    logger.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    logger.error('Provide them via Railway environment variables or a local .env file.');
+    process.exit(1);
+  }
 }
 
 // Warn if using default session secret in production

@@ -177,10 +177,66 @@ async function initApp() {
 
 async function logout() {
   try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/';
+    const resp = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok && data.success !== false) {
+      window.location.href = '/';
+    } else {
+      console.error('Logout failed', data);
+      showToast('Đăng xuất thất bại');
+    }
   } catch (err) {
     showToast('Đăng xuất thất bại');
+  }
+}
+
+// Calendar modal handlers
+function openStreakCalendar() {
+  const modal = document.getElementById('calendar-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeStreakCalendar() {
+  const modal = document.getElementById('calendar-modal');
+  if (modal) modal.style.display = 'none';
+  document.getElementById('calendar-results-list').innerHTML = '';
+}
+
+async function fetchByDate() {
+  const input = document.getElementById('calendar-date-input');
+  if (!input || !input.value) {
+    showToast('Vui lòng chọn ngày');
+    return;
+  }
+  const date = input.value; // yyyy-mm-dd
+  const loading = document.getElementById('calendar-loading');
+  const list = document.getElementById('calendar-results-list');
+  loading.style.display = 'block';
+  list.innerHTML = '';
+  try {
+    const resp = await fetch(`/api/transactions/by-date?date=${encodeURIComponent(date)}`, { credentials: 'include' });
+    if (!resp.ok) {
+      showToast('Không thể tải dữ liệu');
+      return;
+    }
+    const data = await resp.json();
+    loading.style.display = 'none';
+    if (!data || !Array.isArray(data.transactions)) {
+      list.innerHTML = '<div>Không có giao dịch</div>';
+      return;
+    }
+    const totals = data.totals || { income:0, expense:0 };
+    const html = `
+      <div class="date-summary">Tổng thu: ${formatCurrency(totals.income)} · Tổng chi: ${formatCurrency(totals.expense)}</div>
+      <ul class="calendar-trans-list">
+        ${data.transactions.map(t => `<li class="cal-trans-item">${t.created_at} — <strong>${t.name}</strong> ${formatCurrency(t.amount)}</li>`).join('')}
+      </ul>
+    `;
+    list.innerHTML = html;
+  } catch (err) {
+    console.error('fetchByDate error', err);
+    loading.style.display = 'none';
+    showToast('Lỗi khi tải dữ liệu');
   }
 }
 

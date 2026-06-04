@@ -139,6 +139,32 @@ router.post('/onboarding', async (req, res) => {
   }
 });
 
+// Check if user needs onboarding
+router.get('/onboarding/status', async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const hasOnboarded = await database.hasUserOnboarded(req.session.userId);
+    res.json({ needsOnboarding: !hasOnboarded });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mark onboarding as completed
+router.post('/onboarding/complete', async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    await database.markUserOnboarded(req.session.userId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/settings', async (req, res) => {
   try {
     const { fullName, goalTitle, goalAmount, wasteThreshold, accountType: newAccountType } = req.body;
@@ -370,4 +396,31 @@ router.get('/balance', async (req, res) => {
     apiKeyConfigured: !!process.env.GEMINI_API_KEY
   });
 });
+
+// GET /api/transactions/by-date?date=YYYY-MM-DD
+router.get('/transactions/by-date', async (req, res) => {
+  try {
+    if (!req.session?.userId) return res.status(401).json({ error: 'Unauthorized' });
+    const date = req.query.date; // expected format YYYY-MM-DD
+    if (!date) return res.status(400).json({ error: 'Missing date parameter' });
+    const list = await database.fetchTransactionsByDate(req.session.userId, date);
+    const totals = await database.fetchTotalsByDate(req.session.userId, date);
+    res.json({ transactions: list, totals });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/transactions/search?term=...
+router.get('/transactions/search', async (req, res) => {
+  try {
+    if (!req.session?.userId) return res.status(401).json({ error: 'Unauthorized' });
+    const term = req.query.term || '';
+    const results = await database.searchTransactions(req.session.userId, term);
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

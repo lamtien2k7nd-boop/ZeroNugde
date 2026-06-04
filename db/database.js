@@ -554,12 +554,13 @@ function getDb() {
 function rowToTransaction(r) {
   const o = {
     id: r.id,
-    icon: r.icon,
+    icon: r.icon || (r.amount > 0 ? '💰' : '💸'),
     type: r.type,
-    name: r.name,
-    tag: r.tag,
+    name: r.name || 'Giao dịch',
+    tag: r.tag || '',
     amount: r.amount,
     saved: Boolean(r.saved),
+    created_at: r.created_at || null,
     date: r.date || r.created_at || null,
   };
   if (r.saved && r.saved_amt != null) o.savedAmt = r.saved_amt;
@@ -1463,7 +1464,7 @@ function fetchAppPayload(userId) {
   const savings = db.prepare('SELECT pig_amount AS pigAmount, pig_target AS pigTarget FROM savings WHERE user_id = ?').get(userId);
 
   const transactions = db
-    .prepare('SELECT *, created_at as date FROM transactions WHERE user_id = ? ORDER BY sort_order')
+    .prepare('SELECT *, created_at as date FROM transactions WHERE user_id = ? ORDER BY id DESC')
     .all(userId)
     .map(rowToTransaction);
 
@@ -1588,20 +1589,21 @@ function transferToSavings(userId, amount) {
   const transferAmount = parseInt(amount, 10);
   if (!Number.isFinite(transferAmount) || transferAmount <= 0) throw new Error('Số tiền không hợp lệ');
 
-  // Update savings table
+  // Update savings table (add to piggybank)
   const info = db.prepare('UPDATE savings SET pig_amount = pig_amount + ? WHERE user_id = ?').run(transferAmount, userId);
   if (info.changes === 0) {
     // If no row exists, create one (though it should exist from createUser)
     db.prepare('INSERT INTO savings (user_id, pig_amount, pig_target) VALUES (?, ?, 10000000)').run(userId, transferAmount);
   }
 
-  // Also record as a "saving" transaction for history
+  // Record a NEGATIVE transaction to deduct from balance (money leaves wallet into savings fund)
   const maxSort = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM transactions WHERE user_id = ?').get(userId).m;
   db.prepare(`
     INSERT INTO transactions (user_id, sort_order, icon, type, name, tag, amount, saved, saved_amt)
-    VALUES (?, ?, '🐷', 'green', 'Tiết kiệm TPN', '#Tiết_kiệm', 0, 1, ?)
-  `).run(userId, maxSort + 1, transferAmount);
+    VALUES (?, ?, '🐷', 'green', 'Chuyển vào Quỹ TPN', '#Tiết_kiệm', ?, 1, ?)
+  `).run(userId, maxSort + 1, -transferAmount, transferAmount);
 
+  // Sync exchange summary so new savings are available for investment
   const updatedSavings = db.prepare('SELECT pig_amount, pig_target FROM savings WHERE user_id = ?').get(userId);
   const exchange = syncExchangeFromSavings(userId);
   return {

@@ -311,32 +311,27 @@ function extractAmountFromVoice(text) {
 }
 
 function openAIChatbot() {
-  const modal = document.getElementById('modal-container');
-  modal.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal()">
-      <div class="compare-modal ai-chat-modal" onclick="event.stopPropagation()" style="max-width: 520px; width: 100%; display: flex; flex-direction: column; padding: 24px;">
-        <button class="modal-close" onclick="closeModal()">× Đóng</button>
-        <div class="card-title" style="margin-bottom: 16px;">🤖 Cố vấn tài chính AI</div>
-        <div class="small-note" style="margin-bottom: 12px;">Phản hồi AI chỉ để tham khảo. Hãy tự quản lý dòng tiền để không phải ăn mì tôm mỗi bữa.</div>
-        <div id="chat-messages" style="flex: 1; overflow-y: auto; margin-bottom: 16px; padding-right: 8px;"></div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input id="chat-input" type="text" placeholder="Nhập câu hỏi của bạn..." style="flex: 1; padding: 12px 14px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--bg-subtle); color: var(--text);">
-          <button class="btn-mic btn-mic-chat" data-target="chat-input" onclick="toggleVoiceInput('chat-input')" title="Nhập bằng giọng nói" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg-subtle); border: none; cursor: pointer;">
-            <i data-lucide="mic"></i>
-          </button>
-          <button class="btn-primary" onclick="sendChatMessage()" style="border-radius: 999px; padding: 12px 18px; min-width: 96px;">Gửi</button>
-        </div>
-      </div>
-    </div>
-  `;
-  modal.style.display = 'block';
-  refreshIcons();
+  switchScreen('chatbot', document.querySelector('.nav-item[data-screen="chatbot"]'));
+}
+
+function renderChatbot() {
+  const screen = document.getElementById('screen-chatbot');
+  if (!screen) return;
+
   const input = document.getElementById('chat-input');
+  if (input && !input.dataset.chatInit) {
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendChatMessage();
+    });
+    input.dataset.chatInit = '1';
+  }
+
+  const messagesDiv = document.getElementById('chat-messages');
+  if (messagesDiv && messagesDiv.children.length === 0) {
+    appendChatMessage('bot', 'Chào bạn! Tôi là cố vấn tài chính AI. Hãy hỏi tôi về chi tiêu, tiết kiệm, hoặc đầu tư nhé! 💬');
+  }
+
   input?.focus();
-  input?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendChatMessage();
-  });
-  appendChatMessage('bot', 'Chào bạn! Tôi là cố vấn tài chính AI. Hãy hỏi tôi về chi tiêu, tiết kiệm, hoặc đầu tư nhé! 💬');
 }
 
 function appendChatMessage(sender, text, options = {}) {
@@ -951,6 +946,9 @@ async function initApp() {
     refreshIcons();
     checkOnboarding();
     
+    // Khởi tạo chức năng tìm kiếm
+    initSearch();
+    
     // Gắn sự kiện AI phân loại sau khi render xong
     attachAIExpenseListeners();
     
@@ -959,40 +957,283 @@ async function initApp() {
     showToast('Lỗi tải dữ liệu');
   }
 }
+
+// ──────────────────────────────────────────────────────
+// SEARCH TRANSACTION
+// ──────────────────────────────────────────────────────
+function initSearch() {
+  const input = document.getElementById('global-search-input');
+  const dropdown = document.getElementById('search-results-dropdown');
+  if (!input || !dropdown) {
+    console.error('Không tìm thấy element cho chức năng search');
+    return;
+  }
+  
+  // Áp dụng class active thay vì style display
+  dropdown.style.display = '';
+
+  let debounceTimer;
+
+  input.addEventListener('input', (e) => {
+    clearTimeout(debounceTimer);
+    const term = e.target.value.trim().toLowerCase();
+
+    if (!term) {
+      dropdown.classList.remove('active');
+      return;
+    }
+
+    debounceTimer = setTimeout(() => {
+      // Lọc danh sách giao dịch có sẵn
+      const results = (transactions || []).filter(tx => {
+        const name = (tx.name || '').toLowerCase();
+        const tag = (tx.tag || '').toLowerCase();
+        const amountStr = String(tx.amount || '');
+        return name.includes(term) || tag.includes(term) || amountStr.includes(term);
+      }).slice(0, 10); // Giới hạn 10 kết quả
+
+      if (results.length === 0) {
+        dropdown.innerHTML = `<div style="padding: 10px; text-align: center; color: var(--text-muted); font-size: 13px;">Không tìm thấy giao dịch</div>`;
+      } else {
+        dropdown.innerHTML = results.map(t => `
+          <div class="trans-item" style="padding: 10px; border-bottom: 1px solid var(--bg-subtle); display: flex; justify-content: space-between; align-items: center; background: var(--card); border-radius: 8px; margin-bottom: 4px; cursor: default;">
+            <div style="flex: 1; text-align: left;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--text);">${t.name}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${t.created_at || t.date} • ${t.tag}</div>
+            </div>
+            <strong style="color: ${t.amount > 0 ? 'var(--success)' : 'var(--text)'}; font-size: 13px;">
+              ${t.amount > 0 ? '+' : ''}${t.amount.toLocaleString()}₫
+            </strong>
+          </div>
+        `).join('');
+      }
+      dropdown.classList.add('active');
+    }, 200);
+  });
+
+  // Đóng dropdown khi click ra ngoài
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('active');
+    }
+  });
+
+  // Hiện lại dropdown nếu click vào input và có giá trị
+  input.addEventListener('focus', () => {
+    if (input.value.trim() && dropdown.innerHTML.trim() !== '') {
+      dropdown.classList.add('active');
+    }
+  });
+}
+
+async function logout() {
+  try {
+    const resp = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok && data.success !== false) {
+      window.location.href = '/';
+    } else {
+      console.error('Logout failed', data);
+      showToast('Đăng xuất thất bại', 'error');
+    }
+  } catch (err) {
+    showToast('Đăng xuất thất bại', 'error');
+  }
+}
+
+// Calendar modal handlers
+let currentCalDate = new Date();
+
+function openStreakCalendar() {
+  const modal = document.getElementById('calendar-modal');
+  if (modal) modal.style.display = 'flex';
+  renderCalendarGrid();
+}
+
+function closeStreakCalendar() {
+  const modal = document.getElementById('calendar-modal');
+  if (modal) modal.style.display = 'none';
+  const list = document.getElementById('calendar-results-list');
+  if (list) list.innerHTML = '';
+}
+
+function changeCalendarMonth(offset) {
+  currentCalDate.setMonth(currentCalDate.getMonth() + offset);
+  renderCalendarGrid();
+  const list = document.getElementById('calendar-results-list');
+  if (list) list.innerHTML = '';
+}
+
+function renderCalendarGrid() {
+  const container = document.getElementById('calendar-days-container');
+  const title = document.getElementById('streak-calendar-title');
+  if (!container || !title) return;
+
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+  
+  title.textContent = `Tháng ${String(month + 1).padStart(2, '0')}/${year}`;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  
+  let firstDayOfWeek = firstDay.getDay() - 1;
+  if (firstDayOfWeek === -1) firstDayOfWeek = 6;
+
+  const activeDaysStr = new Set();
+  if (Array.isArray(transactions)) {
+    transactions.forEach(tx => {
+      let dStr = tx.created_at || tx.date;
+      if (!dStr) return;
+      const d = new Date(dStr);
+      if (!isNaN(d.getTime())) {
+        activeDaysStr.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      }
+    });
+  }
+
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  let html = '';
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    html += `<div class="cal-day-cell inactive"></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday = (dStr === todayStr);
+    const isCurrentActive = activeDaysStr.has(dStr);
+    
+    const prevDate = new Date(year, month, day - 1);
+    const prevStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
+    const nextDate = new Date(year, month, day + 1);
+    const nextStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+    
+    const prevActive = activeDaysStr.has(prevStr);
+    const nextActive = activeDaysStr.has(nextStr);
+    
+    let streakClass = '';
+    if (isCurrentActive) {
+      if (!prevActive && !nextActive) streakClass = 'streak-single';
+      else if (!prevActive && nextActive) streakClass = 'streak-start';
+      else if (prevActive && nextActive) streakClass = 'streak-mid';
+      else if (prevActive && !nextActive) streakClass = 'streak-end';
+      streakClass = `has-streak streak-active ${streakClass}`;
+    }
+    
+    html += `
+      <div class="cal-day-cell ${isToday ? 'today' : ''} ${streakClass}" onclick="fetchByDate('${dStr}')">
+        <div class="streak-band"></div>
+        <div class="cal-day-num">${String(day).padStart(2, '0')}</div>
+        <div class="streak-dot"></div>
+      </div>
+    `;
+  }
+  
+  const totalSlotsRendered = firstDayOfWeek + daysInMonth;
+  const remaining = (7 - (totalSlotsRendered % 7)) % 7;
+  for (let i = 0; i < remaining; i++) {
+    html += `<div class="cal-day-cell inactive"></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+async function fetchByDate(date) {
+  const loading = document.getElementById('calendar-loading');
+  const list = document.getElementById('calendar-results-list');
+  if (loading) loading.style.display = 'block';
+  if (list) list.innerHTML = '';
+  try {
+    const resp = await fetch(`/api/transactions/by-date?date=${encodeURIComponent(date)}`, { credentials: 'include' });
+    if (!resp.ok) throw new Error('Network response was not ok');
+    const data = await resp.json();
+    if (loading) loading.style.display = 'none';
+    if (!data || !Array.isArray(data.transactions) || data.transactions.length === 0) {
+      if (list) list.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-muted);">Không có giao dịch nào trong ngày này</div>';
+      return;
+    }
+    const totals = data.totals || { income:0, expense:0 };
+    const html = `
+      <div class="date-summary" style="padding-bottom: 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; font-weight: 500;">
+        <span style="color: var(--success); margin-right: 15px;">Tổng thu: ${totals.income.toLocaleString()}₫</span>
+        <span style="color: var(--danger);">Tổng chi: ${totals.expense.toLocaleString()}₫</span>
+      </div>
+      <ul class="calendar-trans-list" style="list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto;">
+        ${data.transactions.map(t => `
+          <li class="cal-trans-item" style="padding: 10px; border-bottom: 1px solid var(--bg-subtle); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 500;">${t.name}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${t.created_at || t.date}</div>
+            </div>
+            <strong style="color: ${t.amount > 0 ? 'var(--success)' : 'var(--text)'};">${t.amount > 0 ? '+' : ''}${t.amount.toLocaleString()}₫</strong>
+          </li>`).join('')}
+      </ul>
+    `;
+    if (list) list.innerHTML = html;
+  } catch (err) {
+    console.error('fetchByDate error', err);
+    if (loading) loading.style.display = 'none';
+    showToast('Lỗi khi tải dữ liệu', 'error');
+  }
+}
+
 // ──────────────────────────────────────────────────────
 // ONBOARDING & TOUR
 // ──────────────────────────────────────────────────────
-function checkOnboarding() {
+async function checkOnboarding() {
   if (!currentUser) return;
-
-  const createdAt = new Date(currentUser.created_at);
-  const now = new Date();
-  const diffDays = (now - createdAt) / (1000 * 60 * 60 * 24);
-
-  // If new user (within 3 days) and hasn't set goals yet
-  if (diffDays <= 3 && (!currentUser.goal_title || currentUser.goal_amount === 0)) {
-    showOnboardingModal();
-  } else {
-    // Check if tour should be shown (only once)
-    const hasBeenOffered = ['tour_completed', 'tour_skipped', 'tour_presented'].some(act => userLogs.includes(act));
-    if (!hasBeenOffered) {
-      startTour();
-      logAction('tour_presented');
+  
+  try {
+    // Check if user has already onboarded
+    const response = await fetch('/api/onboarding/status');
+    const data = await response.json();
+    
+    if (data.needsOnboarding) {
+      // Check if user is new (created within last 3 days) OR has no goal set
+      const createdAt = new Date(currentUser.created_at);
+      const now = new Date();
+      const diffDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+      const hasNoGoal = !currentUser.goal_title || currentUser.goal_amount === 0;
+      
+      if (diffDays <= 3 && hasNoGoal) {
+        showOnboardingModal(true);
+      } else if (hasNoGoal) {
+        // User hasn't set goals but is not new - still show onboarding but with different message
+        showOnboardingModal(false); // false = not new user
+      }
+    } else {
+      // User has already onboarded, check if tour should be shown
+      const hasBeenOffered = ['tour_completed', 'tour_skipped', 'tour_presented'].some(act => userLogs.includes(act));
+      if (!hasBeenOffered) {
+        startTour();
+        logAction('tour_presented');
+      }
     }
+  } catch (err) {
+    console.error('Failed to check onboarding status:', err);
   }
-
 }
 
-function showOnboardingModal() {
+function showOnboardingModal(isNewUser = true) {
   const modal = document.getElementById('modal-container');
+  const title = isNewUser ? 'Chào mừng bạn mới!' : 'Thiết lập mục tiêu tài chính';
+  const message = isNewUser 
+    ? 'Hãy cùng ZeroNudge thiết lập mục tiêu tài chính đầu tiên của bạn nhé.'
+    : 'Hãy thiết lập mục tiêu tài chính để ZeroNudge có thể đồng hành cùng bạn.';
+  
   modal.innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-content onboarding-modal">
         <div class="modal-header">
-          <h2>Chào mừng bạn mới!</h2>
+          <h2>${title}</h2>
         </div>
         <div class="modal-body">
-          <p>Hãy cùng ZeroNudge thiết lập mục tiêu tài chính đầu tiên của bạn trong 3 ngày đầu tiên nhé.</p>
+          <p>${message}</p>
           <div class="input-field">
             <label>Mục tiêu của bạn là gì?</label>
             <input type="text" id="ob-goal-title" placeholder="Ví dụ: Mua laptop mới, Quỹ khẩn cấp...">
@@ -1027,23 +1268,35 @@ async function saveOnboarding() {
   }
 
   try {
+    // Save settings
     const res = await fetch('/api/onboarding', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ goalTitle, goalAmount, wasteThreshold })
     });
+    
     if (res.ok) {
+      // Mark onboarding as complete
+      await fetch('/api/onboarding/complete', { method: 'POST' });
+      
+      // Update local user data
       currentUser.goal_title = goalTitle;
       currentUser.goal_amount = goalAmount;
       currentUser.waste_threshold = wasteThreshold;
+      currentUser.has_onboarded = true;
       pigTarget = goalAmount;
+      
       document.getElementById('modal-container').style.display = 'none';
       renderDashboard();
       showToast('Thiết lập thành công!');
+      
+      // Start tour after successful onboarding
       startTour();
+    } else {
+      throw new Error('Failed to save');
     }
   } catch (err) {
-    showToast('Lỗi lưu thông tin');
+    showToast('Lỗi lưu thông tin: ' + err.message, 'error');
   }
 }
 
@@ -1178,8 +1431,12 @@ function switchScreen(id, el) {
   if (el) el.classList.add('active');
 
   // Render logic for specific screens
+  const activeNav = el || document.querySelector('.nav-item[data-screen="' + id + '"]');
+  if (activeNav) activeNav.classList.add('active');
+
   switch (id) {
     case 'dashboard': renderDashboard(); break;
+    case 'chatbot': renderChatbot(); break;
     // [DISABLED] case 'ledger': void renderLedger(); break;
     // [DISABLED] case 'budget': renderBudget(); break;
     case 'exchange': renderExchange(); break;
@@ -1671,24 +1928,41 @@ function renderTransactions(containerId = 'trans-list', limit = null) {
     pageTransactions = transactions.slice(startIdx, endIdx);
   }
 
-  const transactionsHtml = pageTransactions.map(t => `
+  const transactionsHtml = pageTransactions.map(t => {
+    const icon = t.icon || (t.type === 'green' ? '🐷' : (t.amount > 0 ? '💰' : '💸'));
+    const rawDate = t.created_at || t.date;
+    let dateStr = '';
+    if (rawDate) {
+      try {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+      } catch (e) { dateStr = ''; }
+    }
+    const amountClass = t.amount > 0 ? 'amount-pos' : (t.amount < 0 ? 'amount-neg' : 'amount-green');
+    const amountDisplay = t.amount !== 0
+      ? `${t.amount > 0 ? '+' : ''}${Math.abs(t.amount).toLocaleString()}₫`
+      : `🐷 Qũ TPN`;
+    return `
     <div class="trans-item">
-      <div class="trans-icon" style="font-size: 20px;">${t.icon}</div>
+      <div class="trans-icon" style="font-size: 20px;">${icon}</div>
       <div class="trans-info">
         <div class="trans-name-row" style="display: flex; align-items: center; justify-content: space-between;">
-          <div class="trans-name">${escapeHtml(t.name)}</div>
+          <div class="trans-name">${escapeHtml(t.name || 'Giao dịch')}</div>
           ${t.isWaste ? `<div class="waste-badge">! Lãng phí</div>` : ''}
         </div>
         <div class="trans-date" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 10px; color: var(--text-muted);">
-          ${escapeHtml(t.tag)} 
+          ${escapeHtml(t.tag || '')}${dateStr ? ' · ' + dateStr : ''}
           ${t.saved && t.savedAmt && !limit ? `<span class="badge badge-green" style="font-size: 10px;">Đã tiết kiệm ${t.savedAmt.toLocaleString()}₫</span>` : ''}
         </div>
       </div>
-      <div class="trans-amount ${t.amount > 0 ? 'amount-pos' : 'amount-neg'}" style="font-weight: 700; font-family: var(--mono);">
-        ${t.amount > 0 ? '+' : ''}${Math.abs(t.amount).toLocaleString()}₫
+      <div class="trans-amount ${amountClass}" style="font-weight: 700; font-family: var(--mono);">
+        ${amountDisplay}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   let paginationHtml = '';
   if (!limit) {
@@ -1776,47 +2050,138 @@ async function preprocessImage(file) {
 }
 
 async function scanQRCode() {
+  // Check if browser supports camera
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Trình duyệt của bạn không hỗ trợ quét QR code', 'error');
+    return;
+  }
+
+  // Check if running on HTTPS (required for camera access)
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
+    showToast('Quét QR code yêu cầu kết nối HTTPS. Vui lòng sử dụng trình duyệt hỗ trợ.', 'error');
+    return;
+  }
+
   const modal = document.getElementById('modal-container');
+  if (!modal) return;
+  
+  // Create modal with proper structure
   modal.innerHTML = `
     <div class="modal-overlay" onclick="closeQRScanner()">
-      <div class="compare-modal" style="max-width: 500px;" onclick="event.stopPropagation()">
+      <div class="compare-modal" style="max-width: 500px; width: 90%;" onclick="event.stopPropagation()">
         <button class="modal-close" onclick="closeQRScanner()">× Đóng</button>
         <div class="card-title" style="margin-bottom: 16px;">Quét mã QR</div>
         <div id="qr-reader" style="width: 100%;"></div>
         <div id="qr-result" style="margin-top: 12px; font-size: 13px; color: var(--text-dim);"></div>
+        <div id="qr-error" style="margin-top: 12px; font-size: 13px; color: #ef4444; display: none;"></div>
       </div>
     </div>
   `;
+  modal.style.display = 'block';
   refreshIcons();
 
+  // Clean up existing scanner
   if (html5QrCode) {
-    try { await html5QrCode.stop(); } catch (e) { }
+    try {
+      await html5QrCode.stop();
+      html5QrCode.clear();
+    } catch (e) {
+      console.log('Cleanup error:', e);
+    }
+    html5QrCode = null;
   }
 
-  html5QrCode = new Html5Qrcode('qr-reader');
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  // Small delay to ensure DOM is ready
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  const qrReaderElement = document.getElementById('qr-reader');
+  if (!qrReaderElement) {
+    showToast('Không thể khởi tạo QR scanner', 'error');
+    return;
+  }
+
+  const errorDiv = document.getElementById('qr-error');
+  
   try {
-    await html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
-      if (html5QrCode) {
-        html5QrCode.stop().catch(() => { });
+    // Request camera permission first (this will trigger browser permission dialog)
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    // Stop the stream immediately - we just wanted permission
+    stream.getTracks().forEach(track => track.stop());
+    
+    // Now initialize the QR scanner
+    html5QrCode = new Html5Qrcode('qr-reader');
+    
+    const config = { 
+      fps: 10, 
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0
+    };
+    
+    await html5QrCode.start(
+      { facingMode: 'environment' }, 
+      config, 
+      (decodedText) => {
+        // Success callback
+        if (html5QrCode) {
+          html5QrCode.stop().catch(() => {});
+          html5QrCode = null;
+        }
+        closeQRScanner();
+        processQRData(decodedText);
+      },
+      (errorMessage) => {
+        // Error callback - ignore individual frame errors
+        if (errorDiv && errorDiv.style.display !== 'block') {
+          console.log('QR scan in progress:', errorMessage);
+        }
       }
-      closeQRScanner();
-      processQRData(decodedText);
-    });
+    );
+    
+    showToast('📷 Đang quét QR... Hãy đưa mã QR vào khung hình', 'info', 3000);
+    
   } catch (err) {
-    console.error('QR scanner error', err);
-    showToast('Không thể truy cập camera');
-    closeQRScanner();
+    console.error('QR scanner error:', err);
+    
+    let errorMsg = 'Không thể truy cập camera. ';
+    if (err.name === 'NotAllowedError') {
+      errorMsg += 'Vui lòng cho phép truy cập camera.';
+    } else if (err.name === 'NotFoundError') {
+      errorMsg += 'Không tìm thấy camera trên thiết bị.';
+    } else if (err.name === 'NotSupportedError') {
+      errorMsg += 'Trình duyệt không hỗ trợ quét QR qua camera.';
+    } else if (err.name === 'OverconstrainedError') {
+      errorMsg += 'Không có camera phù hợp. Thử dùng camera sau.';
+    } else {
+      errorMsg += err.message;
+    }
+    
+    if (errorDiv) {
+      errorDiv.textContent = errorMsg;
+      errorDiv.style.display = 'block';
+    }
+    showToast(errorMsg, 'error');
+    
+    // Auto close after 3 seconds if error
+    setTimeout(() => closeQRScanner(), 3000);
   }
 }
 
 function closeQRScanner() {
   if (html5QrCode) {
-    html5QrCode.stop().catch(() => { });
-    html5QrCode = null;
+    html5QrCode.stop()
+      .then(() => {
+        html5QrCode = null;
+      })
+      .catch((err) => {
+        console.log('QR stop error:', err);
+        html5QrCode = null;
+      });
   }
   const modal = document.getElementById('modal-container');
-  if (modal) modal.innerHTML = '';
+  if (modal) {
+    modal.innerHTML = '';
+    modal.style.display = 'none';
+  }
 }
 
 function processQRData(data) {
@@ -3373,21 +3738,25 @@ function changeBudgetApprovalsPage(newPage) {
 // ──────────────────────────────────────────────────────
 function renderExchange() {
   const container = document.getElementById('screen-exchange');
+  if (!container) return;
+
+  const summary = exchangeSummary || { availableBalance: 0, totalInvested: 0, cumulativeReturn: 0 };
+  
   container.innerHTML = `
     <div class="exchange-summary-card">
       <div class="summary-left">
         <div class="summary-label">SỐ DƯ KHẢ DỤNG (GREEN SAVING)</div>
-        <div class="main-value">${exchangeSummary.availableBalance.toLocaleString()}₫</div>
+        <div class="main-value">${(summary.availableBalance || 0).toLocaleString()}₫</div>
         <div class="summary-subtext">Nguồn từ The Perfect No · Lãi kỳ vọng 8.5%/năm</div>
       </div>
       <div class="summary-right">
         <div class="summary-item">
           <div class="summary-label">Tổng đã đầu tư</div>
-          <div class="summary-value">${exchangeSummary.totalInvested.toLocaleString()}₫</div>
+          <div class="summary-value">${(summary.totalInvested || 0).toLocaleString()}₫</div>
         </div>
         <div class="summary-item">
           <div class="summary-label">Lãi cộng dồn</div>
-          <div class="summary-value green-text">+${exchangeSummary.cumulativeReturn.toLocaleString()}₫</div>
+          <div class="summary-value green-text">+${(summary.cumulativeReturn || 0).toLocaleString()}₫</div>
         </div>
       </div>
     </div>
@@ -3767,7 +4136,9 @@ async function confirmInvest(projectName) {
       return;
     }
 
-    exchangeSummary = data.exchangeSummary;
+    if (data.exchangeSummary) {
+      exchangeSummary = data.exchangeSummary;
+    }
     const project = projects.find(p => p.name === projectName);
     if (project && data.project) {
       project.raised = data.project.raised;

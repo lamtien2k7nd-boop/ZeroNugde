@@ -82,6 +82,11 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=self');
+  next();
+});
+
 // Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'zeronudge-secret-key',
@@ -181,8 +186,33 @@ app.post('/api/auth/login', authLimiter, async (req, res) => { // Re-enabled aut
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy();
-  res.json({ message: 'Logged out successfully' });
+  logger.info(`Logout requested, sessionID=${req.sessionID}`);
+  if (!req.session) {
+    logger.warn('Logout requested but no session found');
+    return res.status(200).json({ success: true, message: 'No active session' });
+  }
+
+  const userId = req.session.userId;
+  req.session.destroy((err) => {
+    if (err) {
+      logger.error('Session destroy error during logout:', err);
+      return res.status(500).json({ success: false, error: 'Logout failed' });
+    }
+
+    // Clear the session cookie. Session name set earlier as `name: 'sid'`.
+    try {
+      res.clearCookie('sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production'
+      });
+    } catch (cookieErr) {
+      logger.warn('Failed to clear cookie during logout:', cookieErr);
+    }
+
+    logger.info(`Session destroyed for userId=${userId}`);
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
 });
 
 app.get('/api/auth/me', (req, res) => {
@@ -200,6 +230,11 @@ app.use('/public', express.static(path.join(__dirname, 'public'), {
   maxAge: '0',
   etag: true
 }));
+
+// Thêm đoạn này để xử lý riêng cho file favicon khi chạy local
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'icons', 'favicon.ico'));
+});
 
 // Thêm sau phần static files
 app.get('/service-worker.js', (req, res) => {

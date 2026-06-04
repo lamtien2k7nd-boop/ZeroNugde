@@ -59,6 +59,14 @@ nav.landing-nav {
   color: var(--primary);
 }
 
+.nav-logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: white;
+}
+
 .nav-links {
   display: flex;
   gap: 32px;

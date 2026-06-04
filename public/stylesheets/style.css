@@ -151,6 +151,38 @@ body {
   color: #fff;
 }
 
+.logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* Calendar modal */
+.calendar-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.4);
+  z-index: 2000;
+}
+.calendar-modal.show { display: flex; }
+.calendar-modal .panel {
+  background: var(--bg-white);
+  padding: 20px;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 95%;
+  box-shadow: 0 12px 30px rgba(2,6,23,0.6);
+}
+.calendar-modal .panel h3 { margin: 0 0 12px 0; }
+.calendar-modal .panel .controls { display:flex; gap:8px; margin-bottom:12px; }
+.calendar-modal .panel .results { max-height:300px; overflow:auto; }
+.calendar-modal .loading { text-align:center; padding:16px 0; }
+
 .logo-text {
   font-weight: 800;
   font-size: 16px;
@@ -251,7 +283,7 @@ body {
   border-radius: 8px;
   width: 180px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .search-bar input {
@@ -1228,6 +1260,10 @@ html[data-theme="dark"] .theme-switch-icon::after {
   color: #ef4444;
 }
 
+.amount-green {
+  color: #14b8a6;
+}
+
 /* BADGES */
 .badge {
   padding: 2px 8px;
@@ -1773,6 +1809,17 @@ html[data-theme="dark"] .theme-switch-icon::after {
   color: #ffffff;
 }
 
+.chatbot-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-thread {
+  flex: 1;
+  overflow-y: auto;
+}
+
 .modal-close {
   position: absolute;
   top: 20px;
@@ -1823,6 +1870,126 @@ html[data-theme="dark"] .theme-switch-icon::after {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* STREAK CALENDAR & GRID */
+.calendar-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px 0;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.cal-weekday {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.cal-day-cell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 38px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.cal-day-num {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  z-index: 2;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.cal-day-cell:hover .cal-day-num {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cal-day-cell.inactive .cal-day-num {
+  color: var(--text-dim);
+  opacity: 0.3;
+}
+
+/* Today indicator */
+.cal-day-cell.today .cal-day-num {
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+}
+
+/* Dots and streaks */
+.streak-band {
+  position: absolute;
+  top: 50%;
+  height: 32px;
+  background: rgba(34, 197, 94, 0.15); /* light green band */
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+/* The dot below the number when there's a transaction */
+.streak-dot {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--success);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.cal-day-cell.has-streak .streak-dot {
+  opacity: 1;
+}
+
+/* Active day text */
+.cal-day-cell.has-streak .cal-day-num {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Overlap handling for gaps - assuming gap is 0 and we use padding or just stretch exactly */
+.cal-day-cell.streak-single .streak-band {
+  left: 50%; right: 50%;
+  width: 32px;
+  border-radius: 12px;
+  transform: translate(-50%, -50%);
+}
+
+.cal-day-cell.streak-start .streak-band {
+  left: 50%; right: 0;
+  border-radius: 12px 0 0 12px;
+}
+
+.cal-day-cell.streak-mid .streak-band {
+  left: 0; right: 0;
+}
+
+.cal-day-cell.streak-end .streak-band {
+  left: 0; right: 50%;
+  border-radius: 0 12px 12px 0;
 }
 
 /* THE PERFECT NO (TPN) STYLES */

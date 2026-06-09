@@ -62,7 +62,7 @@ getDb();
 // Rate limiting middleware
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // limit each IP to 500 requests per windowMs
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -71,7 +71,7 @@ const limiter = rateLimit({
 // Stricter rate limiting for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 login attempts per windowMs
+  max: 20, // limit each IP to 20 login attempts per windowMs
   message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -145,7 +145,7 @@ const requireAuth = (req, res, next) => {
 // Auth Routes
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   try {
-    const { username, password, fullName } = req.body;
+    const { username, password, fullName, gender, age, occupation } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
@@ -155,7 +155,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Username already exists' });
     }
 
-    const userId = await createUser(username, password, fullName);
+    const userId = await createUser(username, password, fullName, gender, age, occupation);
     res.status(201).json({ message: 'User registered successfully', userId });
   } catch (err) {
     res.status(500).json({ error: err.message });

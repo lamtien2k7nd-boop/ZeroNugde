@@ -8,3 +8,5 @@ uploads/
 *.tmp
 .windsurf/
 tmp/
+.devin/
+

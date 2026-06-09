@@ -47,11 +47,6 @@
           <i data-lucide="repeat"></i>
           <span>Sàn Vốn</span>
         </div>
-        <!-- NEW GAME NAVIGATION ITEM -->
-        <div class="nav-item" onclick="switchScreen('game', this)">
-          <i data-lucide="gamepad-2"></i>
-          <span>Phân loại rác</span>
-        </div>
         <!-- [DISABLED] Sổ hạch toán
         <div class="nav-item" onclick="switchScreen('ledger', this)">
           <i data-lucide="book-open"></i>
@@ -135,42 +130,7 @@
         <div id="screen-dashboard" class="screen active">
           <div class="dashboard-grid">
             <div class="dashboard-left">
-              <!-- GREETING HERO (inspired by design image) -->
-              <div class="greeting-hero">
-                <div class="greeting-hero__text">
-                  <div class="greeting-hero__sub">Xin chào,</div>
-                  <h2 class="greeting-hero__name" id="greeting-username">Người dùng! <span class="greeting-hero__emoji">👋</span></h2>
-                  <p class="greeting-hero__desc">Theo dõi tài chính thông minh — kiểm soát dòng tiền, đạt tự do tài chính.</p>
-                </div>
-                <div class="greeting-hero__blob"></div>
-              </div>
-
-              <!-- Feature Highlight Cards (inspired by design image) -->
-              <div class="feature-cards-row">
-                <div class="feature-card feature-card--organized">
-                  <div class="feature-card__icon">
-                    <i data-lucide="folder-check"></i>
-                  </div>
-                  <div class="feature-card__title">Tổ chức rõ ràng</div>
-                  <div class="feature-card__desc">Phân loại giao dịch theo danh mục</div>
-                </div>
-                <div class="feature-card feature-card--sync">
-                  <div class="feature-card__icon">
-                    <i data-lucide="refresh-cw"></i>
-                  </div>
-                  <div class="feature-card__title">Đồng bộ dữ liệu</div>
-                  <div class="feature-card__desc">Dữ liệu luôn được cập nhật</div>
-                </div>
-                <div class="feature-card feature-card--collab">
-                  <div class="feature-card__icon">
-                    <i data-lucide="share-2"></i>
-                  </div>
-                  <div class="feature-card__title">Chia sẻ & cộng tác</div>
-                  <div class="feature-card__desc">Chia sẻ báo cáo với đồng nghiệp</div>
-                </div>
-              </div>
-
-              <!-- 5 KPI cards hàng ngang -->
+              <!-- 4 KPI cards hàng ngang -->
               <div class="kpi-row">
                 <div class="kpi-card">
                   <div class="kpi-header"><span>Biến động số dư</span><i data-lucide="trending-up"></i></div>
@@ -181,26 +141,12 @@
                   <div class="kpi-value" id="savings-val">--</div>
                 </div>
                 <div class="kpi-card">
-                  <div class="kpi-header"><span>Tổng đầu tư</span><i data-lucide="zap"></i></div>
-                  <div class="kpi-value" id="invested-val">--</div>
-                </div>
-                <div class="kpi-card">
                   <div class="kpi-header"><span>Tỉ lệ chi/thu</span><i data-lucide="bar-chart-3"></i></div>
                   <div class="kpi-value" id="ratio-val">--</div>
                 </div>
                 <div class="kpi-card">
                   <div class="kpi-header"><span>Chuỗi giao dịch</span><i data-lucide="calendar" id="streak-calendar-icon" onclick="openStreakCalendar()"></i></div>
                   <div class="kpi-value" id="streak-val">0</div>
-                </div>
-              </div>
-
-              <!-- Mini Chart Section -->
-              <div class="chart-card-mini" style="margin-bottom: 24px; padding: 20px; background: var(--card); border-radius: var(--rad); border: 1px solid var(--card-border); box-shadow: var(--shadow);">
-                <div class="card-header" style="margin-bottom: 12px;">
-                  <span class="card-title">Xu hướng thu chi (7 ngày)</span>
-                </div>
-                <div class="chart-container" style="height: 120px; position: relative;">
-                  <canvas id="miniChart"></canvas>
                 </div>
               </div>
 
@@ -276,92 +222,27 @@
 
             <!-- Dashboard Right (CHỈ hiện trên desktop) -->
             <div class="dashboard-right desktop-only">
-
-              <!-- ASSIGNMENTS / RECENT TASKS WIDGET -->
-              <div class="widget-card assignments-widget">
-                <div class="widget-header">
-                  <div>
-                    <span class="widget-eyebrow">Chi tiêu</span>
-                    <span class="card-title" style="margin-left:6px;">Giao dịch gần đây</span>
-                  </div>
+              <!-- Giao dịch gần đây Card -->
+              <div class="trans-card card-summary">
+                <div class="card-header">
+                  <div class="card-title">Giao dịch gần đây</div>
                   <button class="btn-text" onclick="switchScreen('transactions', null)">Xem tất cả</button>
                 </div>
                 <div class="trans-list" id="trans-list-summary"></div>
-                <button class="assign-add-btn" onclick="document.getElementById('qi-name').focus()">
-                  <i data-lucide="plus"></i> Thêm giao dịch
-                </button>
               </div>
 
-              <!-- MINI CALENDAR WIDGET -->
-              <div class="widget-card calendar-widget">
-                <div class="widget-header">
-                  <span class="card-title" id="mini-cal-title">--</span>
-                  <div style="display:flex;gap:4px;">
-                    <button class="btn-icon" style="width:28px;height:28px;" onclick="changeCalendarMonth(-1)"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></button>
-                    <button class="btn-icon" style="width:28px;height:28px;" onclick="changeCalendarMonth(1)"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></button>
-                  </div>
+              <!-- Xu hướng Card -->
+              <div class="chart-card card-summary">
+                <div class="card-header">
+                  <div class="card-title">Xu hướng thu chi</div>
+                  <button class="btn-text" onclick="switchScreen('charts', null)">Chi tiết</button>
                 </div>
-                <div class="mini-cal-grid" id="mini-cal-grid">
-                  <div class="mini-cal-weekday">T2</div><div class="mini-cal-weekday">T3</div>
-                  <div class="mini-cal-weekday">T4</div><div class="mini-cal-weekday">T5</div>
-                  <div class="mini-cal-weekday">T6</div><div class="mini-cal-weekday">T7</div>
-                  <div class="mini-cal-weekday">CN</div>
-                  <div id="mini-cal-days" style="display:contents;"></div>
-                </div>
-                <!-- Upcoming scheduled event slots -->
-                <div class="cal-event-list" id="cal-event-list">
-                  <div class="cal-event-item">
-                    <div class="cal-event-dot" style="background:var(--primary)"></div>
-                    <div class="cal-event-info">
-                      <div class="cal-event-title">Kiểm tra ngân sách tháng</div>
-                      <div class="cal-event-meta">Cuối tháng · Tài chính</div>
-                    </div>
-                  </div>
-                  <div class="cal-event-item">
-                    <div class="cal-event-dot" style="background:var(--secondary)"></div>
-                    <div class="cal-event-info">
-                      <div class="cal-event-title">Báo cáo thu chi</div>
-                      <div class="cal-event-meta">Hàng tuần · Tổng hợp</div>
-                    </div>
-                  </div>
+                <div style="height: 180px; position: relative;">
+                  <canvas id="miniChart"></canvas>
                 </div>
               </div>
 
-              <!-- PROGRESS CIRCLES WIDGET (like Marketing/Typography from design) -->
-              <div class="widget-card progress-widget">
-                <div class="progress-circle-item">
-                  <div class="progress-circle-wrap">
-                    <svg class="progress-ring" viewBox="0 0 60 60">
-                      <circle class="progress-ring__track" cx="30" cy="30" r="24"/>
-                      <circle class="progress-ring__fill progress-ring__fill--primary" cx="30" cy="30" r="24" id="prog-circle-1"/>
-                    </svg>
-                    <span class="progress-ring__label" id="prog-label-1">--%</span>
-                  </div>
-                  <div class="progress-circle-meta">
-                    <div class="progress-circle-eyebrow">TỈ LỆ TIẾT KIỆM</div>
-                    <div class="progress-circle-title">Green Saving</div>
-                    <div class="progress-circle-sub" id="prog-sub-1">-- / -- đ</div>
-                  </div>
-                </div>
-                <div class="progress-circle-divider"></div>
-                <div class="progress-circle-item">
-                  <div class="progress-circle-wrap">
-                    <svg class="progress-ring" viewBox="0 0 60 60">
-                      <circle class="progress-ring__track" cx="30" cy="30" r="24"/>
-                      <circle class="progress-ring__fill progress-ring__fill--accent" cx="30" cy="30" r="24" id="prog-circle-2"/>
-                    </svg>
-                    <span class="progress-ring__label" id="prog-label-2">--%</span>
-                  </div>
-                  <div class="progress-circle-meta">
-                    <div class="progress-circle-eyebrow">CHI / THU</div>
-                    <div class="progress-circle-title">Chi tiêu</div>
-                    <div class="progress-circle-sub" id="prog-sub-2">--</div>
-                  </div>
-                  <button class="btn-primary" style="padding:5px 14px;font-size:11px;border-radius:8px;margin-left:auto;" onclick="switchScreen('charts', null)">Xem</button>
-                </div>
-              </div>
-
-              <!-- GOAL CARD (Mục tiêu) -->
+              <!-- Mục tiêu Card -->
               <div class="goals-card card-summary">
                 <div class="card-header">
                   <div class="card-title">Mục tiêu tài chính</div>
@@ -378,7 +259,6 @@
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -396,18 +276,15 @@
         <div id="screen-charts" class="screen">
           <div class="screen-header">
             <button class="back-btn" onclick="switchScreen('dashboard', null)"><i data-lucide="arrow-left"></i></button>
-            <h2>Biểu đồ thu chi</h2>
+            <h2>Biểu đồ thu nhập</h2>
           </div>
-          <div class="chart-card" style="margin-bottom: 24px;">
-            <div class="card-header" style="margin-bottom: 16px;">
-              <span class="card-title">Dòng tiền Thu / Chi</span>
-            </div>
-            <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
+          <div class="chart-card">
+            <div class="chart-container">
               <canvas id="mainChart"></canvas>
             </div>
           </div>
           <div class="chart-card" id="b2b-spend-card" style="display:none;">
-            <div class="chart-container" style="position: relative; height: 280px; width: 100%;">
+            <div class="chart-container">
               <canvas id="groupSpendChart"></canvas>
             </div>
           </div>
@@ -439,27 +316,6 @@
 
         <!-- SCREEN: EXCHANGE (Rót vốn) -->
         <div id="screen-exchange" class="screen"></div>
-
-        <!-- NEW SCREEN: GAME (Financial Sorting) -->
-        <div id="screen-game" class="screen">
-          <div class="screen-header">
-            <button class="back-btn" onclick="switchScreen('dashboard', null)"><i data-lucide="arrow-left"></i></button>
-            <h2>Phân loại Rác tài chính 🧩</h2>
-          </div>
-          <div class="game-container-wrapper">
-            <div class="game-container">
-              <canvas id="gameCanvas" width="1100" height="600" style="border-radius: 28px; background: #eef2f5; box-shadow: 0 10px 20px rgba(0,0,0,0.2);"></canvas>
-            </div>
-            <div class="game-info-panel">
-              <div class="game-stats">
-                <div class="game-stat">🎯 SCORE <span id="gameScoreValue">0</span></div>
-                <div class="game-stat">⏱️ TIME <span id="gameTimerValue">60</span></div>
-              </div>
-              <div class="game-phase-badge" id="gamePhaseDisplay">🌱 PHASE 1</div>
-              <button class="game-reset-btn" id="gameResetButton">🔄 CHƠI LẠI</button>
-            </div>
-          </div>
-        </div>
 
         <!-- [DISABLED] SCREEN: LEDGER
         <div id="screen-ledger" class="screen"></div>
@@ -544,11 +400,6 @@
       <div class="nav-item" onclick="switchScreen('exchange', this)">
         <i data-lucide="repeat"></i>
         <span>Rót vốn</span>
-      </div>
-      <!-- NEW GAME BOTTOM NAV -->
-      <div class="nav-item" onclick="switchScreen('game', this)">
-        <i data-lucide="gamepad-2"></i>
-        <span>Game</span>
       </div>
       <!-- [DISABLED] Bottom nav: Sổ sách
       <div class="nav-item" onclick="switchScreen('ledger', this)">

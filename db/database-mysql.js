@@ -19,11 +19,11 @@ function findUserByUsername(username) {
 }
 
 // Create user
-function createUser(username, password, fullName) {
+function createUser(username, password, fullName, gender, age, occupation) {
   const hashedPassword = bcrypt.hashSync(password, 10);
   return new Promise((resolve, reject) => {
-    query('INSERT INTO users (username, password, full_name, account_type, has_onboarded) VALUES (?, ?, ?, ?, ?)', 
-      [username, hashedPassword, fullName, 'b2c', false])
+    query('INSERT INTO users (username, password, full_name, gender, age, occupation, account_type, has_onboarded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+      [username, hashedPassword, fullName, gender || null, age || null, occupation || null, 'b2c', false])
       .then(result => {
         resolve(result.insertId);
       })
@@ -237,6 +237,18 @@ async function updateUserSettings(userId, settings) {
     updates.push('account_type = ?');
     params.push(settings.account_type);
   }
+  if (settings.gender !== undefined) {
+    updates.push('gender = ?');
+    params.push(settings.gender);
+  }
+  if (settings.age !== undefined) {
+    updates.push('age = ?');
+    params.push(settings.age);
+  }
+  if (settings.occupation !== undefined) {
+    updates.push('occupation = ?');
+    params.push(settings.occupation);
+  }
 
   if (updates.length > 0) {
     params.push(userId);
@@ -292,6 +304,13 @@ async function transferToSavings(userId, amount) {
     ON DUPLICATE KEY UPDATE pig_amount = VALUES(pig_amount)
   `, [userId, newSavings, target]);
 
+  // Sync exchange_summary table with new savings balance
+  await query(`
+    INSERT INTO exchange_summary (user_id, available_balance, total_invested, cumulative_return)
+    VALUES (?, ?, 0, 0)
+    ON DUPLICATE KEY UPDATE available_balance = VALUES(available_balance)
+  `, [userId, newSavings]);
+
   // Record a NEGATIVE transaction to deduct from balance (money leaves wallet into savings fund)
   const result = await query('SELECT COALESCE(MAX(sort_order), -1) AS max_sort FROM transactions WHERE user_id = ?', [userId]);
   const nextSort = result.length > 0 ? result[0].max_sort + 1 : 0;
@@ -300,44 +319,55 @@ async function transferToSavings(userId, amount) {
     VALUES (?, ?, '🐷', 'green', 'Chuyển vào Quỹ TPN', '#Tiết_kiệm', ?, 1, ?)
   `, [userId, nextSort, -transferAmount, transferAmount]);
 
-  // GET OR CREATE exchange_summary record first
-  let exchangeRow = await query('SELECT * FROM exchange_summary WHERE user_id = ?', [userId]);
-  let totalInvested = 0;
-  
-  if (exchangeRow.length === 0) {
-    // Create exchange_summary record if it doesn't exist
-    await query(
-      'INSERT INTO exchange_summary (user_id, available_balance, total_invested, cumulative_return) VALUES (?, ?, ?, ?)',
-      [userId, newSavings, 0, 0]
-    );
-    totalInvested = 0;
-  } else {
-    totalInvested = exchangeRow[0].total_invested || 0;
-  }
-  
-  // Calculate new available balance
-  const newAvailable = Math.max(0, newSavings - totalInvested);
-  const rate = 0.085;
-  const cumulativeReturn = Math.round(newSavings * rate * 0.15);
-  
-  // Update exchange_summary
-  await query(
-    'UPDATE exchange_summary SET available_balance = ?, cumulative_return = ? WHERE user_id = ?',
-    [newAvailable, cumulativeReturn, userId]
-  );
-  
-  const exchangeSummary = {
-    availableBalance: newAvailable,
-    totalInvested: totalInvested,
-    cumulativeReturn: cumulativeReturn,
-  };
-
+  // Return updated savings values
   return {
     pigAmount: newSavings,
     pigTarget: target,
-    exchangeSummary,
-    co2ReducedKg: (transferAmount / 50000).toFixed(1),
-    projectedInterest: Math.round(newSavings * 0.085)
+    exchangeSummary: {
+      availableBalance: newSavings,
+      totalInvested: 0,
+      cumulativeReturn: 0
+    }
+  };
+}
+
+// Update savings from income transaction
+async function updateSavingsFromIncome(userId, incomeAmount) {
+  const amount = parseInt(incomeAmount, 10);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return; // Don't throw error, just skip update
+  }
+
+  // Get current savings
+  const savings = await query('SELECT * FROM savings WHERE user_id = ?', [userId]);
+  const currentSavings = savings.length > 0 ? savings[0].pig_amount : 0;
+  const target = savings.length > 0 ? savings[0].pig_target : 0;
+
+  const newSavings = currentSavings + amount;
+
+  // Update savings table
+  await query(`
+    INSERT INTO savings (user_id, pig_amount, pig_target)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE pig_amount = VALUES(pig_amount)
+  `, [userId, newSavings, target]);
+
+  // Sync exchange_summary table with new savings balance
+  await query(`
+    INSERT INTO exchange_summary (user_id, available_balance, total_invested, cumulative_return)
+    VALUES (?, ?, 0, 0)
+    ON DUPLICATE KEY UPDATE available_balance = VALUES(available_balance)
+  `, [userId, newSavings]);
+
+  // Return updated savings values
+  return {
+    pigAmount: newSavings,
+    pigTarget: target,
+    exchangeSummary: {
+      availableBalance: newSavings,
+      totalInvested: 0,
+      cumulativeReturn: 0
+    }
   };
 }
 
@@ -406,7 +436,7 @@ async function approveEventBackup(userId, eventId, option, amount) {
 
 // Fetch app payload (simplified version)
 async function fetchAppPayload(userId) {
-  const user = await query('SELECT username, full_name, created_at, goal_title, goal_amount, waste_threshold, account_type, has_onboarded FROM users WHERE id = ?', [userId]);
+  const user = await query('SELECT username, full_name, gender, age, occupation, created_at, goal_title, goal_amount, waste_threshold, account_type, has_onboarded FROM users WHERE id = ?', [userId]);
   if (user.length === 0) {
     throw new Error('Người dùng không tồn tại');
   }
@@ -414,7 +444,7 @@ async function fetchAppPayload(userId) {
   const userData = user[0];
 
   // Global data
-  const tags = await query('SELECT id, label, color, green FROM tags ORDER BY sort_order');
+  const tags = await query('SELECT id, label, color, green, parent_id, is_main FROM tags ORDER BY sort_order');
 
   const tpnSettings = await getTPNSettings(userId);
 
@@ -442,6 +472,8 @@ async function fetchAppPayload(userId) {
     cumulativeReturn: exchangeRow[0].cumulative_return,
   } : null;
 
+  const investments = await getUserInvestments(userId);
+
   const logs = await query('SELECT action FROM user_logs WHERE user_id = ?', [userId]);
 
   const events = await fetchEvents(userId);
@@ -462,6 +494,7 @@ async function fetchAppPayload(userId) {
     suggestions,
     ledgerSummary,
     exchangeSummary,
+    investments,
     events,
     cashbook,
     logs,
@@ -531,6 +564,42 @@ async function insertTransaction(userId, transaction) {
   };
 }
 
+// Delete transaction
+async function deleteTransaction(userId, transactionId) {
+  // First check if the transaction belongs to the user
+  const transaction = await query('SELECT * FROM transactions WHERE id = ? AND user_id = ?', [transactionId, userId]);
+  if (transaction.length === 0) {
+    throw new Error('Giao dịch không tồn tại hoặc bạn không có quyền xóa');
+  }
+
+  // Delete the transaction
+  await query('DELETE FROM transactions WHERE id = ? AND user_id = ?', [transactionId, userId]);
+  return { success: true };
+}
+
+// Add a new investment record
+async function addInvestment(userId, projectId, amount) {
+  const result = await query(
+    `INSERT INTO user_investments (user_id, project_id, amount, status)
+     VALUES (?, ?, ?, 'active')`,
+    [userId, projectId, amount]
+  );
+  return result.insertId;
+}
+
+// Get all investments for a user with project details
+async function getUserInvestments(userId) {
+  const rows = await query(`
+    SELECT ui.id, ui.amount, ui.status, ui.invested_at, ui.returned_at,
+           p.id as project_id, p.name as project_name, p.icon, p.rate, p.period
+    FROM user_investments ui
+    JOIN projects p ON ui.project_id = p.id
+    WHERE ui.user_id = ?
+    ORDER BY ui.invested_at DESC
+  `, [userId]);
+  return rows;
+}
+
 // Apply investment (placeholder)
 async function applyInvestment(userId, projectName, amount) {
   const investAmount = parseInt(amount, 10);
@@ -538,7 +607,7 @@ async function applyInvestment(userId, projectName, amount) {
 
   const exchangeRows = await query('SELECT available_balance, total_invested, cumulative_return FROM exchange_summary WHERE user_id = ?', [userId]);
   if (exchangeRows.length === 0) throw new Error('Không tìm thấy thông tin sàn vốn');
-  
+
   const exchangeRow = exchangeRows[0];
   if (investAmount > exchangeRow.available_balance) throw new Error('Số dư không đủ để đầu tư');
 
@@ -550,6 +619,20 @@ async function applyInvestment(userId, projectName, amount) {
   const newTotalInvested = (exchangeRow.total_invested || 0) + investAmount;
 
   await query('UPDATE exchange_summary SET available_balance = ?, total_invested = ? WHERE user_id = ?', [newAvailable, newTotalInvested, userId]);
+
+  // Sync savings table with new available balance
+  // Get current pig_target first to avoid MySQL subquery restriction
+  const savingsRows = await query('SELECT pig_target FROM savings WHERE user_id = ?', [userId]);
+  const currentTarget = savingsRows.length > 0 ? savingsRows[0].pig_target : 0;
+
+  await query(`
+    INSERT INTO savings (user_id, pig_amount, pig_target)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE pig_amount = VALUES(pig_amount)
+  `, [userId, newAvailable, currentTarget]);
+
+  // Record investment in user_investments table
+  await addInvestment(userId, projectRow.id, investAmount);
 
   // UI assumes 'raised' is in billions (tỷ)
   const raisedDelta = investAmount / 1000000000;
@@ -563,6 +646,7 @@ async function applyInvestment(userId, projectName, amount) {
       totalInvested: newTotalInvested,
       cumulativeReturn: exchangeRow.cumulative_return,
     },
+    pigAmount: newAvailable,
     project: updatedProjectRows[0],
   };
 }
@@ -794,6 +878,8 @@ module.exports = {
   insertLedgerRow,
   insertTransaction,
   applyInvestment,
+  addInvestment,
+  getUserInvestments,
   getEvents,
   fetchEvents,
   seed,
@@ -807,5 +893,7 @@ module.exports = {
   fetchTotalsByDate,
   searchTransactions,
   hasUserOnboarded,
-  markUserOnboarded
+  markUserOnboarded,
+  deleteTransaction,
+  updateSavingsFromIncome
 };

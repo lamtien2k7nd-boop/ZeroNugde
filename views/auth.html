@@ -59,6 +59,25 @@
             <label>Họ tên</label>
             <input type="text" name="fullName" placeholder="Nguyễn Văn A" required>
           </div>
+          <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+              <label>Giới tính</label>
+              <select name="gender" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white;">
+                <option value="" disabled selected>Chọn...</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>Độ tuổi</label>
+              <input type="number" name="age" placeholder="Ví dụ: 25" min="1" max="150">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nghề nghiệp</label>
+            <input type="text" name="occupation" placeholder="Ví dụ: Sinh viên, Kỹ sư...">
+          </div>
           <div class="form-group">
             <label>Username</label>
             <input type="text" name="username" placeholder="username123" required>

@@ -433,16 +433,18 @@ footer {
 /* AUTH PAGE STYLES */
 .auth-body {
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
 }
 
 .auth-container {
   background: white;
   width: 900px;
-  height: 600px;
+  min-height: 600px;
+  max-height: 90vh;
   border-radius: 32px;
   display: flex;
   overflow: hidden;
@@ -466,10 +468,11 @@ footer {
 
 .auth-form-side {
   flex: 1;
-  padding: 60px;
+  padding: 40px 48px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  overflow-y: auto;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -485,7 +488,7 @@ footer {
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .form-group label {
@@ -553,12 +556,139 @@ footer {
 }
 
 @media (max-width: 900px) {
-  .hero, .offer, .features, .benefits {
+  section {
+    height: auto;
+    min-height: auto;
+  }
+  nav.landing-nav {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .nav-logo {
+    font-size: 14px;
+    gap: 0;
+  }
+  .nav-logo-text {
+    display: none;
+  }
+  .nav-links {
+    gap: 15px;
+  }
+  .nav-links a {
+    font-size: 10px;
+  }
+  .btn-started {
+    padding: 8px 15px;
+    font-size: 10px;
+  }
+
+  /* Hero Section */
+  .hero {
+    flex-direction: column;
+    padding: 120px 20px 60px !important;
+    text-align: center;
+  }
+  .hero-content h1 { 
+    font-size: 36px; 
+  }
+  .hero-content p {
+    margin: 0 auto 30px auto;
+  }
+  .hero-image {
+    margin-top: 40px;
+  }
+  .hero-image img {
+    max-width: 100%;
+  }
+
+  /* Offer Section */
+  .offer {
+    padding: 60px 20px;
+  }
+  .offer-grid { 
+    grid-template-columns: 1fr; 
+    gap: 20px;
+  }
+  .offer-card {
+    padding: 30px 20px;
+  }
+
+  /* Features */
+  .features {
+    padding: 60px 20px;
+  }
+  .features-container { 
+    flex-direction: column; 
+    gap: 40px;
+  }
+  .features-text {
+    flex: none;
+    width: 100%;
+    text-align: center;
+  }
+  .features-visual {
+    height: 300px;
+  }
+
+  /* Benefits */
+  .benefits {
+    padding: 60px 20px;
+  }
+  .benefits-grid { 
+    grid-template-columns: 1fr; 
+    gap: 20px;
+  }
+  .benefit-item {
+    padding: 30px 20px;
+  }
+
+  /* Footer */
+  footer {
     padding: 40px 20px;
   }
-  .hero-content h1 { font-size: 40px; }
-  .offer-grid { grid-template-columns: 1fr; }
-  .features-container { flex-direction: column; }
-  .auth-container { width: 95%; height: auto; min-height: 500px; flex-direction: column; }
-  .auth-visual { display: none; }
+  .footer-content {
+    flex-direction: column;
+    gap: 40px;
+    text-align: center;
+  }
+  .footer-logo {
+    justify-content: center;
+  }
+  .footer-links {
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  /* Auth Container */
+  .auth-body {
+    padding: 16px;
+    align-items: flex-start;
+  }
+  .auth-container { 
+    width: 100%; 
+    height: auto; 
+    min-height: unset; 
+    flex-direction: column; 
+    border-radius: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+  .auth-visual { 
+    display: none; 
+  }
+  .auth-form-side {
+    padding: 30px 20px;
+    transform: none !important;
+  }
+  .signup-mode .auth-form-side {
+    transform: none !important;
+  }
+  .signup-mode .auth-visual {
+    transform: none !important;
+  }
+  .auth-title {
+    font-size: 24px;
+  }
 }
+

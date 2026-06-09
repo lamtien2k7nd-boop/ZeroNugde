@@ -26,13 +26,33 @@ async function classifyExpense(description, amount) {
       - Mô tả: "${description}"
       - Số tiền: ${amount.toLocaleString()}₫
       
-      Hãy phân loại vào MỘT trong các danh mục sau:
-      "Ăn uống", "Mua sắm", "Học tập", "Quần áo", "Giải trí", 
-      "Di chuyển", "Hóa đơn", "Sức khỏe", "Nhà cửa", "Khác"
+      Hãy phân loại vào MỘT trong các danh mục sau (ưu tiên phân loại vào danh mục con cụ thể nếu có thể):
+      
+      Danh mục chính:
+      - "Ăn uống" (bao gồm: Ăn tiệm, Đi chợ, Cà phê)
+      - "Di chuyển" (bao gồm: Xăng xe, Đặt xe)
+      - "Điện nước" (bao gồm: Tiền nhà, Tiết kiệm điện)
+      - "Tạp hóa" (bao gồm: Nhu yếu phẩm, Đồ dùng nhà bếp)
+      - "Sống xanh" (bao gồm: Tái sử dụng, Mua đồ cũ)
+      - "Công nghệ" (bao gồm: Điện thoại, Đăng ký app)
+      - "Giải trí" (bao gồm: Xem phim, Đám đình, Du lịch)
+      - "Mua sắm"
+      - "Sức khỏe"
+      - "Học tập"
+      - "Khác" (chỉ dùng khi không khớp với bất kỳ danh mục nào)
+      
+      Danh mục con (nếu phù hợp hơn):
+      - "Ăn tiệm", "Đi chợ", "Cà phê"
+      - "Xăng xe", "Đặt xe"
+      - "Tiền nhà", "Tiết kiệm điện"
+      - "Nhu yếu phẩm", "Đồ dùng nhà bếp"
+      - "Tái sử dụng", "Mua đồ cũ"
+      - "Điện thoại", "Đăng ký app"
+      - "Xem phim", "Đám đình", "Du lịch"
       
       Trả về JSON với cấu trúc:
       {
-        "category": "tên danh mục",
+        "category": "tên danh mục (ưu tiên danh mục con cụ thể)",
         "confidence": 0.0-1.0,
         "reason": "lý do phân loại ngắn gọn",
         "suggestion": "gợi ý tiết kiệm nếu có"
@@ -43,7 +63,9 @@ async function classifyExpense(description, amount) {
 
     const result = await model.generateContent(prompt);
     const response = result.response.text();
+    console.log('🟡 AI raw response:', response);
     const data = safeParseJson(response);
+    console.log('🟡 AI parsed data:', data);
 
     if (data && data.category) {
       return {
@@ -54,6 +76,7 @@ async function classifyExpense(description, amount) {
       };
     }
 
+    console.log('⚠️ AI did not return valid category, defaulting to Khác');
     return {
       category: 'Khác',
       confidence: 0.5,

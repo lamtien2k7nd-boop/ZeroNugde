@@ -33,7 +33,23 @@ router.get('/transactions', async (req, res) => {
 router.post('/transactions', async (req, res) => {
   try {
     const transaction = await insertTransaction(req.session.userId, req.body);
+    
+    // If it's an income transaction, update the savings table
+    if (req.body.type === 'income' && req.body.amount > 0) {
+      await database.updateSavingsFromIncome(req.session.userId, req.body.amount);
+    }
+    
     res.status(201).json({ success: true, transaction });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/transactions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await database.deleteTransaction(req.session.userId, id);
+    res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -46,6 +62,20 @@ router.post('/invest', async (req, res) => {
     res.status(200).json({ success: true, ...result });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/investments - Lấy danh sách đầu tư của user
+router.get('/investments', async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const investments = await database.getUserInvestments(req.session.userId);
+    res.json({ investments });
+  } catch (err) {
+    console.error('Get investments error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -167,7 +197,7 @@ router.post('/onboarding/complete', async (req, res) => {
 
 router.post('/settings', async (req, res) => {
   try {
-    const { fullName, goalTitle, goalAmount, wasteThreshold, accountType: newAccountType } = req.body;
+    const { fullName, goalTitle, goalAmount, wasteThreshold, accountType: newAccountType, gender, age, occupation } = req.body;
     
     // Cập nhật settings
     await database.updateUserSettings(req.session.userId, {
@@ -175,7 +205,10 @@ router.post('/settings', async (req, res) => {
       goal_title: goalTitle,
       goal_amount: goalAmount,
       waste_threshold: wasteThreshold,
-      account_type: newAccountType
+      account_type: newAccountType,
+      gender: gender,
+      age: age,
+      occupation: occupation
     });
     
     // Cập nhật session
@@ -192,6 +225,9 @@ router.post('/settings', async (req, res) => {
         id: updatedUser.id,
         username: updatedUser.username,
         full_name: updatedUser.full_name,
+        gender: updatedUser.gender,
+        age: updatedUser.age,
+        occupation: updatedUser.occupation,
         goal_title: updatedUser.goal_title,
         goal_amount: updatedUser.goal_amount,
         waste_threshold: updatedUser.waste_threshold,
